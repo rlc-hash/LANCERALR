@@ -291,7 +291,17 @@ const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id
 
 function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
 function copy(text){ (navigator.clipboard?.writeText(text)||Promise.reject()).then(()=>toast("Copiado"),()=>{const a=document.createElement("textarea");a.value=text;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("Copiado")}catch(e){toast("No se pudo copiar")}a.remove()}); }
-function download(name, text, type="application/json"){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+const SANDBOX = (()=>{ try{ return window.self!==window.top }catch(e){ return true } })();
+let askKey=null, askT=0;
+function ask(msg){ if(askKey===msg && Date.now()-askT<5000){ askKey=null; return true; } askKey=msg; askT=Date.now(); toast(msg); return false; }
+function showText(title, text){
+  $("#overlay").insertAdjacentHTML("beforeend",`<div class="modal" id="txt-modal"><div class="card" style="max-width:640px"><div class="h2">${esc(title)}</div>
+    <textarea id="txt-area" rows="14" readonly style="font:12px/1.4 ui-monospace,monospace">${esc(text)}</textarea>
+    <div class="chips" style="margin-top:12px"><button class="btn sm" id="txt-copy">Copiar</button><button class="btn sec sm" id="txt-close">Cerrar</button></div></div></div>`);
+  $("#txt-copy").onclick=()=>{ copy(text); $("#txt-area").select(); }; $("#txt-close").onclick=()=>$("#txt-modal").remove();
+}
+function download(name, text, type="application/json"){
+  if(SANDBOX){ showText(name, text); return; } const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
 
 /* ==================== Marca ==================== */
 function applyBrand(){
@@ -622,7 +632,7 @@ function drawer(o){
   return `<div class="drawer-bg" data-close><div class="drawer">
     <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <button class="btn sec sm" data-close>← Volver</button>
-      <div class="chips"><button class="btn sec sm" data-print="${esc(o.folio)}">🖨 Hoja de embarque</button><button class="btn sec sm" data-copytxt="${esc(o.folio)}">Copiar WhatsApp</button></div>
+      <div class="chips"><button class="btn sec sm" data-print="${esc(o.folio)}">Hoja de embarque</button><button class="btn sec sm" data-copytxt="${esc(o.folio)}">Copiar WhatsApp</button></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -674,6 +684,7 @@ function printSheet(o){
     <table style="width:100%;font-size:13px"><tr><td valign="top" width="50%"><b>REMITENTE</b><br>${esc(o.sol.nombre)}<br>${esc(o.sol.empresa)}<br>${esc(o.sol.tel)}</td><td valign="top"><b>DESTINATARIO</b><br>${esc(o.dst.nombre)}<br>${esc(o.dst.dir)}<br>${esc(o.dst.tel)}</td></tr></table>
     ${o.obs?`<p style="font-size:13px"><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
     <div style="display:flex;gap:40px;margin-top:50px;font-size:12px"><div style="flex:1;border-top:1px solid #000;padding-top:4px">Firma operador / recolección</div><div style="flex:1;border-top:1px solid #000;padding-top:4px">Firma almacén</div><div style="flex:1;border-top:1px solid #000;padding-top:4px">Firma recibe destinatario</div></div></div>`;
+  if(SANDBOX){ $("#overlay").insertAdjacentHTML("beforeend",`<div class="modal" id="txt-modal" style="overflow:auto;align-items:start"><div class="card" style="max-width:820px;background:#fff">${$("#print-root").innerHTML}<div class="chips" style="margin-top:14px"><button class="btn sec sm" id="txt-close">Cerrar</button></div></div></div>`); $("#txt-close").onclick=()=>$("#txt-modal").remove(); return; }
   document.body.classList.add("printing");
   setTimeout(()=>{ window.print(); document.body.classList.remove("printing"); },50);
 }
@@ -708,7 +719,7 @@ document.addEventListener("click", e=>{
       advance(o, CFG.steps[i+1].k, $("#d-note")?.value.trim()); saveOrd(); render(); toast("Checkpoint registrado"); }
   else if(D.saveguia){ const o=byFolio(D.saveguia); const g=$("#d-guia").value.trim(), n=$("#d-note").value.trim(); const jump=$("#d-jump").value;
       o.guia=g; if(jump){ if(!g && stIdx(o)<1){ toast("Asigna guía primero"); return;} advance(o,jump,n||"Actualizado por ALR"); } else if(n) o.history.push({k:o.status,at:Date.now(),note:n,by:"ALR"}); saveOrd(); render(); toast("Guardado"); }
-  else if(D.cancel){ if(confirm("¿Cancelar este pedido?")){ const o=byFolio(D.cancel); o.cancelado=true; o.history.push({k:o.status,at:Date.now(),note:"Pedido cancelado",by:"ALR"}); saveOrd(); render(); } }
+  else if(D.cancel){ if(ask("¿Cancelar este pedido? Da clic otra vez para confirmar")){ const o=byFolio(D.cancel); o.cancelado=true; o.history.push({k:o.status,at:Date.now(),note:"Pedido cancelado",by:"ALR"}); saveOrd(); render(); } }
   else if(D.print){ printSheet(byFolio(D.print)); }
   else if(D.copytxt){ copy(orderTexto(byFolio(D.copytxt))); }
   else if(D.copyjson){ copy(JSON.stringify(orderJSON(byFolio(D.copyjson)),null,2)); }
@@ -722,8 +733,8 @@ document.addEventListener("click", e=>{
       const rows=[["folio","fecha","estatus","guia","cliente","empresa","destino","piezas","m3","kg_reales","kg_volumetricos","kg_cobrables","subtotal","total"]];
       ORD.forEach(o=>rows.push([o.folio,new Date(o.createdAt).toISOString(),o.cancelado?"cancelado":o.status,o.guia,o.sol.nombre,o.sol.empresa,dest(o.dest).name,o.totals.piezas,o.totals.m3.toFixed(4),o.totals.kg.toFixed(2),o.totals.kgVol.toFixed(2),o.totals.kgCob.toFixed(2),o.totals.subtotal.toFixed(2),o.totals.total.toFixed(2)]));
       download("pedidos-alr.csv","﻿"+rows.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n"),"text/csv"); }
-  else if("resetOrders" in D){ if(confirm("¿Restablecer los pedidos de ejemplo?")){ ORD=seedOrders(); saveOrd(); render(); toast("Pedidos restablecidos"); } }
-  else if("resetAll" in D){ if(confirm("Se borrará configuración y pedidos. ¿Continuar?")){ CFG=DEFAULT_CFG(); saveCfg(); ORD=seedOrders(); saveOrd(); Q=newQ(); render(); toast("Valores de fábrica"); } }
+  else if("resetOrders" in D){ if(ask("¿Restablecer pedidos de ejemplo? Da clic otra vez para confirmar")){ ORD=seedOrders(); saveOrd(); render(); toast("Pedidos restablecidos"); } }
+  else if("resetAll" in D){ if(ask("Se borrará todo. Da clic otra vez para confirmar")){ CFG=DEFAULT_CFG(); saveCfg(); ORD=seedOrders(); saveOrd(); Q=newQ(); render(); toast("Valores de fábrica"); } }
   else if("addCaja" in D){ CFG.cajas.push({id:"c"+Date.now(),name:"Caja nueva",l:40,a:40,h:40,kg:10,prices:Object.fromEntries(CFG.destinos.map(d=>[d.id,0]))}); saveCfg(); Q=newQ(); render(); }
   else if(D.delCaja!==undefined){ CFG.cajas.splice(+D.delCaja,1); saveCfg(); Q=newQ(); render(); }
   else if("addDest" in D){ CFG.destinos.push({id:"d"+Date.now(),name:"Nuevo destino",transit:"",ocurre:false,kgRate:3}); saveCfg(); Q=newQ(); render(); }
