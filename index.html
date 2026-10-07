@@ -143,6 +143,7 @@ const money = n => "$" + Number(n||0).toLocaleString("es-MX",{minimumFractionDig
 const num = (n,d=2) => Number(n||0).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fdate = t => new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
 const fday = t => new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
+const APP_VERSION = "v4", APP_DATE = "7 oct 2026";
 const KEY_CFG = "alr_cfg_v2", KEY_ORD = "alr_orders_v2";
 const store = {
   mem:{},
@@ -304,10 +305,10 @@ function applyBrand(){
   r.setProperty("--c1",b.c1); r.setProperty("--c2",b.c2);
   document.title = "Cotizador · "+b.short;
   const logo = b.logo || LOGO_DEFAULT;
-  $("#brand").innerHTML = `<img src="${esc(logo)}" alt="${esc(b.short)}"><b>Cotizador en línea</b>`;
+  $("#brand").innerHTML = `<img src="${esc(logo)}" alt="${esc(b.short)}"><b>Cotizador en línea</b><span class="pill" style="background:rgba(255,255,255,.18);color:#fff">${APP_VERSION}</span>`;
   const tabs = [["cotizar","Cotizar"],["rastreo","Rastrear envío"],["panel", S.auth?"Panel ALR":"🔒 Panel ALR"]];
   $("#nav").innerHTML = tabs.map(([k,t])=>`<button data-go="${k}" class="${S.view===k?"on":""}">${t}</button>`).join("");
-  $("#foot").innerHTML = `${esc(b.name)} · Cotización sujeta a validación de ALR · Tarifa vigente ${esc(CFG.vigencia)}<br>Demo operativo: los datos se guardan solo en este navegador.`;
+  $("#foot").innerHTML = `${esc(b.name)} · Cotización sujeta a validación de ALR · Tarifa vigente ${esc(CFG.vigencia)}<br>Demo operativo: los datos se guardan solo en este navegador.<br><b>Versión ${APP_VERSION}</b> · ${APP_DATE}`;
 }
 
 /* ==================== Vista: Cotizar ==================== */
