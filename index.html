@@ -204,16 +204,16 @@ function pieceCalc(it, destId){
   return {m3, kg, kgVol, unit, line, est};
 }
 function calc(destId, items){
-  let m3=0,kg=0,kgVol=0,sub=0,piezas=0,est=false;
+  let m3=0,kg=0,kgVol=0,kgCob=0,sub=0,piezas=0,est=false;
   const lines = items.map(it=>{
     const p = pieceCalc(it,destId);
-    m3+=p.m3; kg+=p.kg; kgVol+=p.kgVol; sub+=p.line; piezas+=it.qty; est=est||p.est;
+    m3+=p.m3; kg+=p.kg; kgVol+=p.kgVol; kgCob+=it.custom?Math.max(p.kg,p.kgVol):p.kg; sub+=p.line; piezas+=it.qty; est=est||p.est;
     return {...it, ...p};
   });
   const minApplied = sub>0 && sub<CFG.minimo;
   const subtotal = sub>0 ? Math.max(sub, CFG.minimo) : 0;
   const iva = subtotal*CFG.iva/100;
-  return {lines, piezas, m3, kg, kgVol, kgCob:Math.max(kg,kgVol), sub, subtotal, minApplied, iva, total:subtotal+iva, est};
+  return {lines, piezas, m3, kg, kgVol, kgCob, sub, subtotal, minApplied, iva, total:subtotal+iva, est};
 }
 const dest = id => CFG.destinos.find(d=>d.id===id) || {name:id,transit:""};
 const itemName = it => it.custom ? `Medida especial ${it.l}×${it.a}×${it.h} cm` : (CFG.cajas.find(c=>c.id===it.cajaId)||{name:it.name}).name;
@@ -241,6 +241,7 @@ function seedOrders(){
   ].reverse();
 }
 if(!ORD){ ORD = seedOrders(); saveOrd(); }
+ORD.forEach(o=>{ o.totals = calc(o.dest, o.items); });
 
 function nextFolio(){
   const y = new Date().getFullYear();
@@ -376,7 +377,7 @@ function pieceRow(it,i){
   return `<div class="piece" data-i="${i}">
     <div class="head">
       <div><label>Tipo de caja</label><select data-p="tipo">${opts}</select></div>
-      <div><label>Cantidad</label><input type="number" min="1" max="9999" step="1" value="${it.qty}" data-p="qty"></div>
+      <div><label>Cantidad</label><input type="text" inputmode="numeric" autocomplete="off" value="${it.qty||""}" data-p="qty" placeholder="1"></div>
       <button class="x" data-p="del" title="Quitar" ${Q.items.length<2?"disabled style='opacity:.3'":""}>×</button>
     </div>
     ${it.custom?`<div class="dim">
@@ -400,13 +401,14 @@ function renderSummary(){
       <dt>Piezas</dt><dd class="mono">${c.piezas}</dd>
       <dt>Volumen</dt><dd class="mono">${num(c.m3,3)} m³</dd>
       <dt>Peso real</dt><dd class="mono">${num(c.kg)} kg</dd>
-      <dt>Peso volumétrico</dt><dd class="mono">${num(c.kgVol)} kg</dd>
-      <dt>Peso cobrable</dt><dd class="mono">${num(c.kgCob)} kg</dd>
+      <dt class="mut">Volumétrico (referencia)</dt><dd class="mono mut">${num(c.kgVol)} kg</dd>
+      ${c.est?`<dt>Peso cobrable</dt><dd class="mono">${num(c.kgCob)} kg</dd>`:""}
       <dt>Flete</dt><dd class="mono">${money(c.sub)}</dd>
       ${c.minApplied?`<dt>Mínimo por embarque</dt><dd class="mono">${money(CFG.minimo)}</dd>`:""}
       <dt>IVA ${CFG.iva}%</dt><dd class="mono">${money(c.iva)}</dd>
     </dl>
     <div class="tot"><span>Total</span><b class="mono">${money(c.total)}</b></div>
+    ${c.lines.length&&!c.est?`<div class="mut sm" style="margin-top:12px">Las cajas de catálogo se cobran por pieza; el peso volumétrico es solo de referencia.</div>`:""}
     ${c.minApplied?`<div class="note sm" style="margin-top:12px">Se aplicó el mínimo por embarque de ${money(CFG.minimo)}.</div>`:""}
     ${c.est?`<div class="note sm" style="margin-top:12px">Incluye medida especial: precio estimado. ALR lo confirmará al revisar tu pedido.</div>`:""}
     ${d.ocurre?`<div class="note sm" style="margin-top:12px">${esc(d.name)}: entrega solo <b>ocurre</b> (el destinatario recoge en terminal ALR).</div>`:""}
@@ -423,12 +425,13 @@ function valid(){
   if(!Q.dst.nombre.trim()) m.push("destinatario");
   if(!Q.dst.dir.trim()) m.push("dirección de entrega");
   if(Q.dst.tel.replace(/\D/g,"").length<8) m.push("teléfono del destinatario");
+  if(Q.items.some(i=>!(i.qty>=1))) m.push("cantidad de cajas");
   if(Q.items.some(i=>i.custom&&!(i.l>0&&i.a>0&&i.h>0&&i.kg>0))) m.push("medidas de la pieza especial");
   return {ok:!m.length, msg:m.length?"Falta: "+m.join(", "):""};
 }
 function submitOrder(){
   if(!valid().ok) return;
-  const items = Q.items.map(withDims).map(i=>({...i,qty:+i.qty}));
+  const items = Q.items.map(withDims).map(i=>({...i,qty:Math.max(1,parseInt(i.qty,10)||1)}));
   const o = { folio:nextFolio(), createdAt:Date.now(), dest:Q.dest, items, sol:{...Q.sol}, dst:{...Q.dst}, serv:{...Q.serv}, obs:Q.obs.trim(), guia:"", cancelado:false,
               status:"solicitado", history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
   o.totals = calc(o.dest, items);
@@ -746,7 +749,7 @@ document.addEventListener("input", e=>{
   if(D.serv){ Q.serv[D.serv]=t.checked; return; }
   if(D.p){ const pc=t.closest(".piece"), it=Q.items[+pc.dataset.i];
     if(D.p==="tipo"){ if(t.value==="custom"){ Object.assign(it,{custom:true,cajaId:null,l:"",a:"",h:"",kg:""}); } else { it.custom=false; it.cajaId=t.value; delete it.l;delete it.a;delete it.h;delete it.kg; } renderPieces(); }
-    else { it[D.p]=Math.max(0,+t.value||0); if(D.p==="qty"&&it.qty<1) it.qty=1; pc.querySelector(".meta").innerHTML = metaHTML(it); }
+    else { if(D.p==="qty"){ t.value=t.value.replace(/\D/g,"").replace(/^0+/,""); it.qty=parseInt(t.value,10)||0; } else it[D.p]=Math.max(0,+t.value||0); pc.querySelector(".meta").innerHTML = metaHTML(it); }
     renderSummary(); return; }
   if(t.id==="f-q"){ S.filtro=t.value; rerenderKeep(); return; }
   if(D.cb){ CFG.brand[D.cb]=t.value; saveCfg(); applyBrand(); return; }
@@ -757,6 +760,7 @@ document.addEventListener("input", e=>{
 });
 document.addEventListener("change", e=>{
   const t=e.target;
+  if(t.dataset.p==="qty"){ const it=Q.items[+t.closest(".piece").dataset.i]; if(!(it.qty>=1)){ it.qty=1; t.value="1"; t.closest(".piece").querySelector(".meta").innerHTML=metaHTML(it); renderSummary(); } return; }
   if(t.id==="f-est"){ S.fEstado=t.value; render(); }
   else if(t.id==="f-dst"){ S.fDest=t.value; render(); }
   else if(t.id==="d-jump"){ /* se aplica con "Guardar" */ }
