@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cotizador ALR</title>
+<style>
+:root{
+  --c1:#d71920; --c2:#0b2a5b;
+  --bg:#f4f6fa; --card:#fff; --ink:#14213d; --mut:#64708a; --line:#e3e8f0;
+  --ok:#168a4a; --warn:#b7791f; --bad:#c53030; --r:14px;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;line-height:1.2}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+/* header */
+header.top{background:var(--c2);color:#fff;position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+header.top .wrap{display:flex;align-items:center;gap:20px;height:64px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand img{height:38px;width:auto;max-width:150px;object-fit:contain;background:#fff;border-radius:8px;padding:4px 8px}
+.brand b{font-size:15px;letter-spacing:.2px;white-space:nowrap}
+nav.tabs{display:flex;gap:4px;margin-left:auto}
+nav.tabs button{background:transparent;border:0;color:#cfd8ea;padding:9px 14px;border-radius:9px;cursor:pointer;font-weight:600}
+nav.tabs button:hover{background:rgba(255,255,255,.1);color:#fff}
+nav.tabs button.on{background:var(--c1);color:#fff}
+.stripe{height:4px;background:linear-gradient(90deg,var(--c1),var(--c1) 40%,#fff 40%,#fff 42%,var(--c2) 42%)}
+/* generic */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:22px}
+.card+.card{margin-top:16px}
+.grid{display:grid;gap:16px}
+label{display:block;font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;outline:none;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--c1);box-shadow:0 0 0 3px color-mix(in srgb,var(--c1) 18%,transparent)}
+input.bad{border-color:var(--bad)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:10px;padding:11px 18px;font-weight:700;cursor:pointer;background:var(--c1);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.sec{background:#fff;color:var(--c2);border:1.5px solid var(--line)}
+.btn.dark{background:var(--c2)}
+.btn.sm{padding:7px 12px;font-size:13px}
+.btn.ghost{background:transparent;color:var(--c1);padding:6px 10px}
+.mut{color:var(--mut)} .sm{font-size:13px} .r{text-align:right} .mono{font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#eef2f9;color:var(--c2);white-space:nowrap}
+.pill.ok{background:#e3f5ea;color:var(--ok)} .pill.warn{background:#fdf1d9;color:var(--warn)} .pill.bad{background:#fde6e6;color:var(--bad)} .pill.red{background:color-mix(in srgb,var(--c1) 12%,#fff);color:var(--c1)}
+.note{background:#fff8e6;border:1px solid #f3dca2;color:#7a5a10;padding:10px 12px;border-radius:10px;font-size:13px}
+.note.info{background:#eef4ff;border-color:#c9daf8;color:#2a4a85}
+.hero{background:linear-gradient(135deg,var(--c2),color-mix(in srgb,var(--c2) 70%,var(--c1)));color:#fff;padding:34px 0 70px}
+.hero h1{font-size:clamp(26px,4vw,38px);letter-spacing:-.5px}
+.hero p{margin:8px 0 0;color:#d6def0;max-width:560px}
+.pull{margin-top:-48px}
+.layout{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+.sticky{position:sticky;top:84px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sticky{position:static}nav.tabs button{padding:8px 9px;font-size:13px}.brand b{display:none}}
+.stepn{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--c1);color:#fff;font-weight:800;font-size:13px;margin-right:8px}
+.h2{font-size:17px;font-weight:800;margin-bottom:14px;display:flex;align-items:center}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:600px){.row2,.row3{grid-template-columns:1fr}}
+.piece{border:1.5px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;background:#fafbfd}
+.piece .head{display:grid;grid-template-columns:1fr 90px 36px;gap:10px;align-items:end}
+.piece .dim{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.piece .meta{font-size:12px;color:var(--mut);margin-top:8px}
+.x{border:0;background:#fff;border:1.5px solid var(--line);border-radius:9px;height:40px;cursor:pointer;color:var(--bad);font-size:18px}
+.sum dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:6px 10px}
+.sum dt{color:var(--mut)} .sum dd{margin:0;text-align:right;font-weight:600}
+.sum .tot{border-top:2px dashed var(--line);margin-top:12px;padding-top:12px;display:flex;justify-content:space-between;align-items:baseline}
+.sum .tot b{font-size:30px;color:var(--c2);letter-spacing:-1px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);margin:0}
+.chk input{width:auto;margin-top:3px}
+.chk:has(input:checked){border-color:var(--c1);background:color-mix(in srgb,var(--c1) 6%,#fff)}
+/* timeline */
+.tl{list-style:none;margin:0;padding:0}
+.tl li{position:relative;padding:0 0 22px 38px}
+.tl li:before{content:"";position:absolute;left:11px;top:24px;bottom:0;width:2px;background:var(--line)}
+.tl li:last-child:before{display:none}
+.tl .dot{position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--line);display:grid;place-items:center;font-size:12px;color:#fff}
+.tl li.done .dot{background:var(--ok);border-color:var(--ok)}
+.tl li.done:before{background:var(--ok)}
+.tl li.cur .dot{background:var(--c1);border-color:var(--c1);box-shadow:0 0 0 5px color-mix(in srgb,var(--c1) 22%,transparent)}
+.tl li.todo{color:#9aa5bb}
+.tl b{display:block}
+.tl .when{font-size:12px;color:var(--mut)}
+/* panel */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:var(--r);padding:16px;box-shadow:var(--shadow);border-left:5px solid var(--c1)}
+.kpi small{color:var(--mut);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px}
+.kpi b{display:block;font-size:26px;letter-spacing:-.5px;margin-top:2px}
+.subtabs{display:flex;gap:6px;margin:18px 0 14px;flex-wrap:wrap}
+.subtabs button{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:8px 16px;font-weight:700;cursor:pointer;color:var(--mut)}
+.subtabs button.on{background:var(--c2);border-color:var(--c2);color:#fff}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);white-space:nowrap}
+td{padding:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:#f7f9fd}
+.scroll{overflow-x:auto}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.toolbar input,.toolbar select{width:auto;min-width:160px}
+.drawer-bg{position:fixed;inset:0;background:rgba(10,20,40,.5);z-index:40;display:flex;justify-content:flex-end}
+.drawer{background:var(--bg);width:min(640px,100%);height:100%;overflow:auto;padding:20px;animation:in .2s}
+@keyframes in{from{transform:translateX(40px);opacity:0}}
+.modal{position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:50;display:grid;place-items:center;padding:16px}
+.modal .card{max-width:400px;width:100%}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--c2);color:#fff;padding:12px 20px;border-radius:12px;z-index:60;box-shadow:var(--shadow);font-weight:600}
+pre.code{background:#0f1b33;color:#cfe3ff;padding:14px;border-radius:10px;overflow:auto;font-size:12px;max-height:300px;margin:0;white-space:pre-wrap}
+.bar{height:10px;border-radius:9px;background:#e9edf5;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c1)}
+.logo-prev{height:60px;max-width:200px;object-fit:contain;background:#fff;border:1.5px dashed var(--line);border-radius:10px;padding:6px}
+.ok-big{width:64px;height:64px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;font-size:34px;margin:0 auto 12px}
+footer{padding:30px 16px;text-align:center;color:var(--mut);font-size:12px}
+@media print{
+  body{background:#fff} header.top,.stripe,.noprint,footer,.toast,.subtabs,.kpis{display:none!important}
+  .drawer-bg{position:static;background:none;display:block}.drawer{width:100%;height:auto;padding:0;animation:none;overflow:visible}
+  .card{box-shadow:none;border:1px solid #bbb}
+  body.printing>*:not(#print-root){display:none!important}
+}
+#print-root{display:none}
+@media print{body.printing #print-root{display:block}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand" id="brand"></div>
+  <nav class="tabs" id="nav"></nav>
+</div></header>
+<div class="stripe"></div>
+<main id="app"></main>
+<footer id="foot"></footer>
+<div id="print-root"></div>
+<div id="overlay"></div>
+
+<script>
+"use strict";
+/* ==================== Utilidades ==================== */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = n => "$" + Number(n||0).toLocaleString("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2});
+const num = (n,d=2) => Number(n||0).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fdate = t => new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const fday = t => new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
+const KEY_CFG = "alr_cfg_v1", KEY_ORD = "alr_orders_v1";
+const store = {
+  mem:{},
+  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null }catch(e){ return this.mem[k]||null } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)) }catch(e){ this.mem[k]=v } }
+};
+
+/* ==================== Configuración (datos de ALR) ==================== */
+const LOGO_DEFAULT = "data:image/svg+xml;utf8," + encodeURIComponent(
+ `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 80"><rect width="260" height="80" fill="none"/>
+  <path d="M8 62 L30 14 h14 L66 62 h-13 l-4-10 H25 l-4 10z M29 41 h15 l-7.500-18z" fill="#d71920"/>
+  <path d="M74 14 h12 v38 h24 v10 H74z" fill="#0b2a5b"/>
+  <path d="M118 14 h24 c12 0 18 6 18 15 c0 7-4 12-10 14 l12 19 h-14 l-10-17 h-8 v17 h-12z M130 24 v11 h11 c5 0 7-2 7-5.500 s-2-5.500-7-5.500z" fill="#0b2a5b"/>
+  <text x="172" y="38" font-family="Arial,sans-serif" font-weight="700" font-size="13" fill="#0b2a5b">Autolíneas</text>
+  <text x="172" y="54" font-family="Arial,sans-serif" font-weight="700" font-size="13" fill="#d71920">Regiomontanas</text></svg>`);
+
+const DEFAULT_CFG = () => ({
+  brand:{ name:"ALR · Autolíneas Regiomontanas", short:"ALR", c1:"#d71920", c2:"#0b2a5b", logo:null, web:"alr.com.mx", contacto:"paqmex2@alr.com.mx", tel:"" },
+  origen:"Ciudad de México",
+  volFactor:556,      // kg/m³ — INFERIDO, por confirmar con ALR
+  minimo:440,
+  iva:16,             // por confirmar si cotizan antes de IVA
+  vigencia:"Marzo 2026 – Marzo 2027",
+  pin:"1234",
+  destinos:[
+    {id:"qro", name:"Querétaro",     transit:"1–2 días",  ocurre:false, kgRate:2.15},
+    {id:"mty", name:"Monterrey",     transit:"2–3 días",  ocurre:false, kgRate:2.55},
+    {id:"nld", name:"Nuevo Laredo",  transit:"Solo ocurre", ocurre:true,  kgRate:3.25}
+  ],
+  cajas:[
+    {id:"c1", name:"Caja 1", l:75, a:53, h:48, kg:20, prices:{qro:43.59, mty:53.08, nld:66.34}},
+    {id:"c2", name:"Caja 2", l:70, a:47, h:34, kg:30, prices:{qro:90.63, mty:110.08, nld:129.47}},
+    {id:"c3", name:"Caja 3", l:50, a:50, h:50, kg:15, prices:{qro:18.95, mty:18.96, nld:32.23}}
+  ],
+  steps:[
+    {k:"solicitado",       t:"Solicitud recibida",       d:"ALR recibió tu pedido y lo está revisando."},
+    {k:"confirmado",       t:"Confirmado por ALR",       d:"Pedido aceptado y guía asignada."},
+    {k:"recolectado",      t:"Mercancía recolectada",    d:"Tu carga ya está en poder de ALR."},
+    {k:"almacen_origen",   t:"En almacén de origen",     d:"Carga consolidada, lista para salir."},
+    {k:"transito",         t:"En tránsito",              d:"Tu carga va en camino al destino."},
+    {k:"almacen_destino",  t:"En plaza de destino",      d:"Llegó a la plaza; en proceso de entrega."},
+    {k:"entregado",        t:"Entregado",                d:"Mercancía entregada al destinatario."}
+  ]
+});
+
+let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
+let ORD = store.get(KEY_ORD);
+const saveCfg = () => store.set(KEY_CFG, CFG);
+const saveOrd = () => store.set(KEY_ORD, ORD);
+
+/* ==================== Cálculo ==================== */
+function pieceCalc(it, destId){
+  const m3u = it.l*it.a*it.h/1e6;
+  const m3 = m3u*it.qty, kg = it.kg*it.qty, kgVol = m3*CFG.volFactor;
+  let unit=0, line=0, est=false;
+  if(it.custom){
+    est = true;
+    const d = CFG.destinos.find(x=>x.id===destId);
+    const cob = Math.max(kg, kgVol);
+    line = cob*(d?d.kgRate:0); unit = it.qty? line/it.qty : 0;
+  } else {
+    const c = CFG.cajas.find(x=>x.id===it.cajaId);
+    unit = c ? (c.prices[destId]||0) : 0; line = unit*it.qty;
+  }
+  return {m3, kg, kgVol, unit, line, est};
+}
+function calc(destId, items){
+  let m3=0,kg=0,kgVol=0,sub=0,piezas=0,est=false;
+  const lines = items.map(it=>{
+    const p = pieceCalc(it,destId);
+    m3+=p.m3; kg+=p.kg; kgVol+=p.kgVol; sub+=p.line; piezas+=it.qty; est=est||p.est;
+    return {...it, ...p};
+  });
+  const minApplied = sub>0 && sub<CFG.minimo;
+  const subtotal = sub>0 ? Math.max(sub, CFG.minimo) : 0;
+  const iva = subtotal*CFG.iva/100;
+  return {lines, piezas, m3, kg, kgVol, kgCob:Math.max(kg,kgVol), sub, subtotal, minApplied, iva, total:subtotal+iva, est};
+}
+const dest = id => CFG.destinos.find(d=>d.id===id) || {name:id,transit:""};
+const itemName = it => it.custom ? `Medida especial ${it.l}×${it.a}×${it.h} cm` : (CFG.cajas.find(c=>c.id===it.cajaId)||{name:it.name}).name;
+
+/* ==================== Pedidos ==================== */
+function seedOrders(){
+  const H=36e5, now=Date.now();
+  const mk=(n,ago,destId,items,sol,dst,stIdx,extra={})=>{
+    const t = now-ago*H;
+    const o = {folio:`ALR-${new Date(t).getFullYear()}-${String(n).padStart(4,"0")}`, createdAt:t, dest:destId,
+      items, sol, dst, serv:{recoleccion:true,entrega:false,seguro:false}, obs:extra.obs||"", guia:extra.guia||"", cancelado:false, history:[]};
+    o.totals = calc(destId, items);
+    for(let i=0;i<=stIdx;i++) o.history.push({k:CFG.steps[i].k, at:t+i*ago*H/(stIdx+1.5)*0.7, note:extra.notes?.[i]||"", by:i===0?"Cliente":"ALR"});
+    o.status = CFG.steps[stIdx].k;
+    return o;
+  };
+  const b=(cajaId,qty)=>({cajaId,qty,...(({l,a,h,kg})=>({l,a,h,kg}))(CFG.cajas.find(c=>c.id===cajaId))});
+  return [
+    mk(1,3,"mty",[b("c1",40),b("c2",12)],{nombre:"Marisol Treviño",empresa:"Distribuidora Norte SA",correo:"mtrevino@dnorte.mx",tel:"81 5550 1122"},{nombre:"Almacén Central DN",dir:"Av. Industrias 450, Apodaca NL",tel:"81 5550 3344"},0),
+    mk(2,20,"qro",[b("c3",100)],{nombre:"Jorge Salas",empresa:"Refacciones Bajío",correo:"jsalas@refbajio.mx",tel:"442 555 0101"},{nombre:"Refacciones Bajío Sucursal 2",dir:"Blvd. Bernardo Quintana 1200, Querétaro",tel:"442 555 0102"},1,{guia:"ALR-G-48211"}),
+    mk(3,50,"mty",[b("c2",300)],{nombre:"Ana Paula Reyes",empresa:"Textiles del Valle",correo:"areyes@tvalle.mx",tel:"55 5550 7788"},{nombre:"Bodega TV Monterrey",dir:"Carr. a Laredo km 12, Escobedo NL",tel:"81 5550 9900"},3,{guia:"ALR-G-48190",obs:"Carga completa de 43'. Descuento por volumen a validar.",notes:["","Guía generada","Recolectado en planta, 2 operadores","Ingresó a almacén Iztapalapa"]}),
+    mk(4,70,"nld",[b("c1",25),b("c3",30)],{nombre:"Luis Ortega",empresa:"Agroinsumos Frontera",correo:"lortega@agrofront.mx",tel:"867 555 2020"},{nombre:"Agroinsumos Frontera Bodega",dir:"Ocurre en terminal ALR Nuevo Laredo",tel:"867 555 2021"},4,{guia:"ALR-G-48177",notes:["","Guía generada","Recolectado","Almacén origen","Salió en unidad 214 rumbo a N. Laredo"]}),
+    mk(5,140,"qro",[b("c1",10),b("c2",6)],{nombre:"Carmen Vidal",empresa:"Laboratorios Vidal",correo:"cvidal@labvidal.mx",tel:"55 5550 4040"},{nombre:"Dr. Ramiro Vidal",dir:"Calle 5 de Febrero 88, Querétaro",tel:"442 555 8080"},6,{guia:"ALR-G-48120",notes:["","Guía generada","Recolectado","Almacén origen","En tránsito","En plaza Querétaro","Entregó: R. Vidal, firma digital"]}),
+    mk(6,26,"mty",[{custom:true,qty:4,l:120,a:80,h:90,kg:140}],{nombre:"Pedro Gallegos",empresa:"Maquinados PG",correo:"pgallegos@maqpg.mx",tel:"55 5550 6060"},{nombre:"Maquinados PG Monterrey",dir:"Parque Industrial Santa Catarina, NL",tel:"81 5550 6061"},0,{obs:"Medida especial: requiere validación de ejecutivo."})
+  ].reverse();
+}
+if(!ORD){ ORD = seedOrders(); saveOrd(); }
+
+function nextFolio(){
+  const y = new Date().getFullYear();
+  const n = ORD.filter(o=>o.folio.startsWith(`ALR-${y}-`)).length + 1;
+  return `ALR-${y}-${String(n).padStart(4,"0")}`;
+}
+const stIdx = o => CFG.steps.findIndex(s=>s.k===o.status);
+const stLabel = k => (CFG.steps.find(s=>s.k===k)||{t:k}).t;
+function orderTexto(o){
+  const t=o.totals, d=dest(o.dest);
+  const piezas = o.items.map(it=>`  • ${it.qty} × ${itemName(it)} (${it.l}×${it.a}×${it.h} cm, ${it.kg} kg c/u)`).join("\n");
+  const serv = [o.serv.recoleccion&&"Recolección en domicilio",o.serv.entrega&&"Entrega en domicilio",o.serv.seguro&&"Seguro"].filter(Boolean).join(", ")||"Ninguno";
+  return `*PEDIDO ${o.folio}*
+Ruta: ${CFG.origen} → ${d.name} (${d.transit})
+Piezas (${t.piezas}):
+${piezas}
+Volumen: ${num(t.m3,3)} m³ · Peso real: ${num(t.kg)} kg · Volumétrico: ${num(t.kgVol)} kg · Cobrable: ${num(t.kgCob)} kg
+Servicios: ${serv}
+Subtotal: ${money(t.subtotal)}${t.minApplied?" (mínimo por embarque)":""} · IVA: ${money(t.iva)} · *Total: ${money(t.total)}*${t.est?"\n⚠ Incluye medida especial: precio estimado, requiere validación.":""}
+
+Solicitante: ${o.sol.nombre} · ${o.sol.empresa||""} · ${o.sol.tel} · ${o.sol.correo}
+Destinatario: ${o.dst.nombre} · ${o.dst.dir} · ${o.dst.tel}${o.obs?"\nObservaciones: "+o.obs:""}`;
+}
+function orderJSON(o){
+  const t=o.totals;
+  return {
+    folio:o.folio, creado:new Date(o.createdAt).toISOString(), estatus:o.status, guia:o.guia||null,
+    ruta:{origen:CFG.origen,destino:dest(o.dest).name,transito:dest(o.dest).transit},
+    piezas:t.lines.map(l=>({descripcion:itemName(l),cantidad:l.qty,largo_cm:l.l,ancho_cm:l.a,alto_cm:l.h,peso_kg_unit:l.kg,m3:+l.m3.toFixed(4),precio_unit:+l.unit.toFixed(2),importe:+l.line.toFixed(2),estimado:!!l.est})),
+    totales:{piezas:t.piezas,m3:+t.m3.toFixed(4),kg_reales:+t.kg.toFixed(2),kg_volumetricos:+t.kgVol.toFixed(2),kg_cobrables:+t.kgCob.toFixed(2),subtotal:+t.subtotal.toFixed(2),minimo_aplicado:t.minApplied,iva:+t.iva.toFixed(2),total:+t.total.toFixed(2)},
+    servicios:o.serv, solicitante:o.sol, destinatario:o.dst, observaciones:o.obs||"",
+    requiere_validacion:t.est, historial:o.history
+  };
+}
+
+/* ==================== Estado de UI ==================== */
+const S = { view:"cotizar", ptab:"pedidos", auth:false, filtro:"", fEstado:"todos", fDest:"todos", open:null, done:null, track:"", cfgTab:"marca" };
+let Q = null;
+const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, obs:"" });
+Q = newQ();
+const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id===it.cajaId); return {...it, l:c.l,a:c.a,h:c.h,kg:c.kg}; };
+
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+function copy(text){ (navigator.clipboard?.writeText(text)||Promise.reject()).then(()=>toast("Copiado"),()=>{const a=document.createElement("textarea");a.value=text;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("Copiado")}catch(e){toast("No se pudo copiar")}a.remove()}); }
+function download(name, text, type="application/json"){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+
+/* ==================== Marca ==================== */
+function applyBrand(){
+  const b=CFG.brand, r=document.documentElement.style;
+  r.setProperty("--c1",b.c1); r.setProperty("--c2",b.c2);
+  document.title = "Cotizador · "+b.short;
+  const logo = b.logo || LOGO_DEFAULT;
+  $("#brand").innerHTML = `<img src="${esc(logo)}" alt="${esc(b.short)}"><b>Cotizador en línea</b>`;
+  const tabs = [["cotizar","Cotizar"],["rastreo","Rastrear envío"],["panel", S.auth?"Panel ALR":"🔒 Panel ALR"]];
+  $("#nav").innerHTML = tabs.map(([k,t])=>`<button data-go="${k}" class="${S.view===k?"on":""}">${t}</button>`).join("");
+  $("#foot").innerHTML = `${esc(b.name)} · Cotización sujeta a validación de ALR · Tarifa vigente ${esc(CFG.vigencia)}<br>Demo operativo: los datos se guardan solo en este navegador.`;
+}
+
+/* ==================== Vista: Cotizar ==================== */
+function viewCotizar(){
+  if(S.done) return viewDone();
+  return `
+  <div class="hero"><div class="wrap">
+    <h1>Cotiza tu envío en 1 minuto</h1>
+    <p>Captura tu carga, ve el precio al instante y confirma. Tu pedido llega a ALR ya estructurado, con folio y seguimiento.</p>
+  </div></div>
+  <div class="wrap pull"><div class="layout">
+    <div>
+      <div class="card">
+        <div class="h2"><span class="stepn">1</span>Ruta</div>
+        <div class="row2">
+          <div><label>Origen</label><input value="${esc(CFG.origen)}" disabled></div>
+          <div><label>Destino</label><select id="q-dest">${CFG.destinos.map(d=>`<option value="${d.id}" ${Q.dest===d.id?"selected":""}>${esc(d.name)} · ${esc(d.transit)}</option>`).join("")}</select></div>
+        </div>
+        <div id="q-ocurre"></div>
+      </div>
+      <div class="card">
+        <div class="h2"><span class="stepn">2</span>Tu carga</div>
+        <div id="q-pieces"></div>
+        <button class="btn sec sm" id="q-add">+ Agregar otra pieza</button>
+      </div>
+      <div class="card">
+        <div class="h2"><span class="stepn">3</span>Servicios</div>
+        <div class="grid" style="gap:10px">
+          <label class="chk"><input type="checkbox" data-serv="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">ALR la coordina; el costo de maniobras se confirma al aceptar el pedido.</span></span></label>
+          <label class="chk"><input type="checkbox" data-serv="entrega" ${Q.serv.entrega?"checked":""}><span><b>Entrega en domicilio del destinatario</b><br><span class="mut sm">Costo de reparto se confirma por ALR.</span></span></label>
+          <label class="chk"><input type="checkbox" data-serv="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">ALR te contactará con el procedimiento (factura con subtotal).</span></span></label>
+        </div>
+      </div>
+      <div class="card">
+        <div class="h2"><span class="stepn">4</span>Quién envía</div>
+        <div class="row2">
+          <div><label>Nombre *</label><input data-f="sol.nombre" value="${esc(Q.sol.nombre)}" autocomplete="name"></div>
+          <div><label>Empresa</label><input data-f="sol.empresa" value="${esc(Q.sol.empresa)}"></div>
+          <div><label>Correo *</label><input type="email" data-f="sol.correo" value="${esc(Q.sol.correo)}" autocomplete="email"></div>
+          <div><label>Teléfono *</label><input type="tel" data-f="sol.tel" value="${esc(Q.sol.tel)}" autocomplete="tel"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="h2"><span class="stepn">5</span>Quién recibe</div>
+        <div class="row2">
+          <div><label>Nombre o razón social *</label><input data-f="dst.nombre" value="${esc(Q.dst.nombre)}"></div>
+          <div><label>Teléfono *</label><input type="tel" data-f="dst.tel" value="${esc(Q.dst.tel)}"></div>
+        </div>
+        <div style="margin-top:12px"><label>Dirección de entrega *</label><input data-f="dst.dir" value="${esc(Q.dst.dir)}" placeholder="Calle, número, colonia, ciudad"></div>
+        <div style="margin-top:12px"><label>Observaciones</label><textarea rows="2" data-f="obs" placeholder="Horarios, referencias, carga frágil…">${esc(Q.obs)}</textarea></div>
+        <div class="note info sm" style="margin-top:12px">Si el destinatario es nuevo, ALR lo da de alta en 1–2 días hábiles antes de la recolección.</div>
+      </div>
+    </div>
+    <aside class="sticky"><div class="card sum" id="q-sum"></div></aside>
+  </div></div>`;
+}
+function metaHTML(it){
+  const p = pieceCalc(withDims(it), Q.dest), w = withDims(it);
+  return it.custom
+    ? (p.line>0?`Estimado ${money(p.line)} · ${num(p.m3,3)} m³ · cobrable ${num(Math.max(p.kg,p.kgVol))} kg. <b>Requiere validación de ALR.</b>`:"Captura las medidas y el peso.")
+    : `${money(p.unit)} por pieza · ${num(w.l*w.a*w.h/1e6,4)} m³ c/u · <b>${money(p.line)}</b>`;
+}
+function pieceRow(it,i){
+  const p = pieceCalc(withDims(it), Q.dest), w = withDims(it);
+  const opts = CFG.cajas.map(c=>`<option value="${c.id}" ${!it.custom&&it.cajaId===c.id?"selected":""}>${esc(c.name)} — ${c.l}×${c.a}×${c.h} cm · ${c.kg} kg</option>`).join("")
+             + `<option value="custom" ${it.custom?"selected":""}>Otra medida…</option>`;
+  return `<div class="piece" data-i="${i}">
+    <div class="head">
+      <div><label>Tipo de caja</label><select data-p="tipo">${opts}</select></div>
+      <div><label>Cantidad</label><input type="number" min="1" max="9999" step="1" value="${it.qty}" data-p="qty"></div>
+      <button class="x" data-p="del" title="Quitar" ${Q.items.length<2?"disabled style='opacity:.3'":""}>×</button>
+    </div>
+    ${it.custom?`<div class="dim">
+      <div><label>Largo cm</label><input type="number" min="1" data-p="l" value="${it.l||""}"></div>
+      <div><label>Ancho cm</label><input type="number" min="1" data-p="a" value="${it.a||""}"></div>
+      <div><label>Alto cm</label><input type="number" min="1" data-p="h" value="${it.h||""}"></div>
+      <div><label>Peso kg c/u</label><input type="number" min="0.1" step="0.1" data-p="kg" value="${it.kg||""}"></div>
+    </div>`:""}
+    <div class="meta">${metaHTML(it)}</div>
+  </div>`;
+}
+function renderPieces(){ $("#q-pieces").innerHTML = Q.items.map(pieceRow).join(""); }
+function renderSummary(){
+  const items = Q.items.map(withDims).filter(it=>it.l>0&&it.a>0&&it.h>0&&it.kg>0&&it.qty>0);
+  const c = calc(Q.dest, items), d = dest(Q.dest);
+  const ready = valid().ok;
+  $("#q-sum").innerHTML = `
+    <div class="h2" style="margin-bottom:10px">Resumen</div>
+    <div class="mut sm" style="margin-bottom:12px">${esc(CFG.origen)} → <b>${esc(d.name)}</b> · ${esc(d.transit)}</div>
+    <dl>
+      <dt>Piezas</dt><dd class="mono">${c.piezas}</dd>
+      <dt>Volumen</dt><dd class="mono">${num(c.m3,3)} m³</dd>
+      <dt>Peso real</dt><dd class="mono">${num(c.kg)} kg</dd>
+      <dt>Peso volumétrico</dt><dd class="mono">${num(c.kgVol)} kg</dd>
+      <dt>Peso cobrable</dt><dd class="mono">${num(c.kgCob)} kg</dd>
+      <dt>Flete</dt><dd class="mono">${money(c.sub)}</dd>
+      ${c.minApplied?`<dt>Mínimo por embarque</dt><dd class="mono">${money(CFG.minimo)}</dd>`:""}
+      <dt>IVA ${CFG.iva}%</dt><dd class="mono">${money(c.iva)}</dd>
+    </dl>
+    <div class="tot"><span>Total</span><b class="mono">${money(c.total)}</b></div>
+    ${c.minApplied?`<div class="note sm" style="margin-top:12px">Se aplicó el mínimo por embarque de ${money(CFG.minimo)}.</div>`:""}
+    ${c.est?`<div class="note sm" style="margin-top:12px">Incluye medida especial: precio estimado. ALR lo confirmará al revisar tu pedido.</div>`:""}
+    ${d.ocurre?`<div class="note sm" style="margin-top:12px">${esc(d.name)}: entrega solo <b>ocurre</b> (el destinatario recoge en terminal ALR).</div>`:""}
+    <button class="btn" id="q-send" style="width:100%;margin-top:16px;padding:14px" ${c.total>0&&ready?"":"disabled"}>Confirmar pedido</button>
+    <div class="mut sm" id="q-hint" style="margin-top:8px;text-align:center">${valid().msg||"Sin compromiso de pago en línea. ALR te confirma y asigna guía."}</div>
+    <div class="mut sm" style="margin-top:10px;text-align:center">Tarifa vigente ${esc(CFG.vigencia)}</div>`;
+}
+function renderOcurre(){ const d=dest(Q.dest); $("#q-ocurre").innerHTML = d.ocurre?`<div class="note" style="margin-top:12px">Este destino se atiende <b>solo ocurre</b>: el destinatario recoge en la terminal de ALR.</div>`:""; }
+function valid(){
+  const m=[];
+  if(!Q.sol.nombre.trim()) m.push("nombre del remitente");
+  if(!/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())) m.push("correo válido");
+  if(Q.sol.tel.replace(/\D/g,"").length<8) m.push("teléfono");
+  if(!Q.dst.nombre.trim()) m.push("destinatario");
+  if(!Q.dst.dir.trim()) m.push("dirección de entrega");
+  if(Q.dst.tel.replace(/\D/g,"").length<8) m.push("teléfono del destinatario");
+  if(Q.items.some(i=>i.custom&&!(i.l>0&&i.a>0&&i.h>0&&i.kg>0))) m.push("medidas de la pieza especial");
+  return {ok:!m.length, msg:m.length?"Falta: "+m.join(", "):""};
+}
+function submitOrder(){
+  if(!valid().ok) return;
+  const items = Q.items.map(withDims).map(i=>({...i,qty:+i.qty}));
+  const o = { folio:nextFolio(), createdAt:Date.now(), dest:Q.dest, items, sol:{...Q.sol}, dst:{...Q.dst}, serv:{...Q.serv}, obs:Q.obs.trim(), guia:"", cancelado:false,
+              status:"solicitado", history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
+  o.totals = calc(o.dest, items);
+  ORD.unshift(o); saveOrd();
+  S.done = o.folio; Q = newQ(); render(); scrollTo(0,0);
+}
+function viewDone(){
+  const o = ORD.find(x=>x.folio===S.done); if(!o) { S.done=null; return viewCotizar(); }
+  return `<div class="wrap" style="padding-top:30px;max-width:720px">
+    <div class="card" style="text-align:center">
+      <div class="ok-big">✓</div>
+      <h1 style="font-size:26px">¡Pedido recibido!</h1>
+      <p class="mut">ALR lo revisará y te confirmará con tu guía de envío.</p>
+      <div style="margin:18px 0;padding:16px;background:var(--bg);border-radius:12px">
+        <div class="mut sm">Tu folio</div><div style="font-size:30px;font-weight:800;color:var(--c1);letter-spacing:1px">${esc(o.folio)}</div>
+        <div class="mut sm">Total ${money(o.totals.total)} · ${esc(CFG.origen)} → ${esc(dest(o.dest).name)}</div>
+      </div>
+      <div class="chips" style="justify-content:center">
+        <button class="btn" data-track="${esc(o.folio)}">Ver seguimiento</button>
+        <button class="btn sec" data-copytxt="${esc(o.folio)}">Copiar resumen</button>
+        <button class="btn sec" data-new>Nueva cotización</button>
+      </div>
+      <p class="mut sm" style="margin-top:16px">Guarda tu folio: con él consultas el estado de tu envío cuando quieras.</p>
+    </div></div>`;
+}
+
+/* ==================== Vista: Rastreo ==================== */
+function timelineHTML(o, publico=true){
+  const cur = stIdx(o);
+  if(o.cancelado) return `<div class="note" style="background:#fde6e6;border-color:#f3b4b4;color:#8a1f1f">Este pedido fue cancelado.</div>`;
+  return `<ul class="tl">${CFG.steps.map((s,i)=>{
+    const h = [...o.history].reverse().find(x=>x.k===s.k);
+    const cls = i<cur?"done":i===cur?(s.k==="entregado"?"done":"cur"):"todo";
+    return `<li class="${cls}"><span class="dot">${cls==="done"?"✓":""}</span><b>${esc(s.t)}</b>
+      <span class="when">${h?fdate(h.at):"Pendiente"}</span>
+      ${h&&h.note&&publico?`<div class="sm">${esc(h.note)}</div>`:""}
+      ${cls==="cur"?`<div class="sm mut">${esc(s.d)}</div>`:""}</li>`;
+  }).join("")}</ul>`;
+}
+function viewRastreo(){
+  const o = S.track ? ORD.find(x=>x.folio.toLowerCase()===S.track.trim().toLowerCase() || (x.guia&&x.guia.toLowerCase()===S.track.trim().toLowerCase())) : null;
+  return `<div class="hero"><div class="wrap"><h1>Rastrea tu envío</h1><p>Captura tu folio o número de guía para ver en qué punto va tu carga.</p></div></div>
+  <div class="wrap pull" style="max-width:760px">
+    <div class="card">
+      <form id="t-form" style="display:flex;gap:10px"><input id="t-in" placeholder="Ej. ALR-2026-0003" value="${esc(S.track)}" style="flex:1"><button class="btn">Buscar</button></form>
+      <div class="mut sm" style="margin-top:8px">Prueba con: ${ORD.slice(0,3).map(o=>`<a href="#" data-track="${esc(o.folio)}" style="color:var(--c1)">${esc(o.folio)}</a>`).join(" · ")}</div>
+    </div>
+    ${S.track&&!o?`<div class="card"><b>No encontramos ese folio.</b><div class="mut sm">Verifica que esté completo (ej. ALR-2026-0001).</div></div>`:""}
+    ${o?`<div class="card">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <div><div class="mut sm">Folio</div><h2 style="font-size:22px">${esc(o.folio)}</h2></div>
+        <div class="r"><div class="mut sm">Guía</div><b>${esc(o.guia||"Por asignar")}</b></div>
+      </div>
+      <div class="mut sm" style="margin-bottom:18px">${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> · ${o.totals.piezas} pzas · ${num(o.totals.m3,3)} m³ · ${num(o.totals.kgCob)} kg cobrables · Destinatario: ${esc(o.dst.nombre)}</div>
+      ${timelineHTML(o)}
+    </div>`:""}
+  </div>`;
+}
+
+/* ==================== Vista: Panel ALR ==================== */
+function viewPanel(){
+  if(!S.auth) return `<div class="wrap" style="padding:40px 0"><div class="card" style="max-width:420px;margin:0 auto;text-align:center">
+    <h2>Panel interno ALR</h2><p class="mut">Acceso para ejecutivos y almacén.</p>
+    <form id="pin-form"><input id="pin" type="password" inputmode="numeric" placeholder="PIN" style="text-align:center;font-size:20px;letter-spacing:6px" autofocus>
+    <button class="btn" style="width:100%;margin-top:12px">Entrar</button></form>
+    <div class="mut sm" style="margin-top:12px">Demo: PIN <b>${esc(CFG.pin)}</b></div></div></div>`;
+  const act = ORD.filter(o=>!o.cancelado);
+  const hoy = new Date().toDateString();
+  const nuevos = act.filter(o=>o.status==="solicitado").length;
+  const enOp = act.filter(o=>!["solicitado","entregado"].includes(o.status)).length;
+  const m3Alm = act.filter(o=>["confirmado","recolectado","almacen_origen"].includes(o.status)).reduce((s,o)=>s+o.totals.m3,0);
+  const ent = act.filter(o=>o.status==="entregado").length;
+  const venta = act.reduce((s,o)=>s+o.totals.total,0);
+  return `<div class="wrap" style="padding-top:20px">
+    <div class="kpis">
+      <div class="kpi"><small>Por confirmar</small><b>${nuevos}</b></div>
+      <div class="kpi"><small>En operación</small><b>${enOp}</b></div>
+      <div class="kpi"><small>m³ por mover</small><b>${num(m3Alm,2)}</b></div>
+      <div class="kpi"><small>Entregados</small><b>${ent}</b></div>
+      <div class="kpi"><small>Valor cotizado</small><b>${money(venta).replace(".00","")}</b></div>
+    </div>
+    <div class="subtabs">${[["pedidos","Pedidos"],["almacen","Almacén / carga"],["config","Configuración"]].map(([k,t])=>`<button data-ptab="${k}" class="${S.ptab===k?"on":""}">${t}</button>`).join("")}
+      <button style="margin-left:auto" data-logout>Salir</button></div>
+    ${S.ptab==="pedidos"?panelPedidos():S.ptab==="almacen"?panelAlmacen():panelConfig()}
+  </div>`;
+}
+function badge(o){
+  if(o.cancelado) return `<span class="pill bad">Cancelado</span>`;
+  const i=stIdx(o), cls = o.status==="entregado"?"ok":o.status==="solicitado"?"warn":"red";
+  return `<span class="pill ${cls}">${esc(stLabel(o.status))}</span>`;
+}
+function panelPedidos(){
+  const q = S.filtro.toLowerCase();
+  const list = ORD.filter(o=>{
+    if(S.fEstado!=="todos" && (S.fEstado==="cancelado"?!o.cancelado:(o.cancelado||o.status!==S.fEstado))) return false;
+    if(S.fDest!=="todos" && o.dest!==S.fDest) return false;
+    if(q && !(o.folio+o.sol.nombre+o.sol.empresa+o.dst.nombre+(o.guia||"")).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  return `<div class="card" style="padding:16px">
+    <div class="toolbar">
+      <input id="f-q" placeholder="Buscar folio, cliente, guía…" value="${esc(S.filtro)}">
+      <select id="f-est"><option value="todos">Todos los estatus</option>${CFG.steps.map(s=>`<option value="${s.k}" ${S.fEstado===s.k?"selected":""}>${esc(s.t)}</option>`).join("")}<option value="cancelado" ${S.fEstado==="cancelado"?"selected":""}>Cancelados</option></select>
+      <select id="f-dst"><option value="todos">Todos los destinos</option>${CFG.destinos.map(d=>`<option value="${d.id}" ${S.fDest===d.id?"selected":""}>${esc(d.name)}</option>`).join("")}</select>
+      <span class="mut sm" style="margin-left:auto">${list.length} pedido(s)</span>
+      <button class="btn sec sm" data-export-orders>Exportar JSON</button>
+    </div>
+    <div class="scroll"><table>
+      <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Destino</th><th class="r">Pzas</th><th class="r">m³</th><th class="r">kg cob.</th><th class="r">Total</th><th>Estatus</th></tr></thead>
+      <tbody>${list.map(o=>`<tr class="click" data-open="${esc(o.folio)}">
+        <td><b>${esc(o.folio)}</b>${o.totals.est?` <span class="pill warn" title="Medida especial">validar</span>`:""}</td>
+        <td class="sm mut">${fdate(o.createdAt)}</td>
+        <td>${esc(o.sol.empresa||o.sol.nombre)}<div class="sm mut">${esc(o.sol.nombre)}</div></td>
+        <td>${esc(dest(o.dest).name)}</td>
+        <td class="r mono">${o.totals.piezas}</td><td class="r mono">${num(o.totals.m3,2)}</td><td class="r mono">${num(o.totals.kgCob,0)}</td>
+        <td class="r mono"><b>${money(o.totals.total)}</b></td><td>${badge(o)}</td></tr>`).join("")||`<tr><td colspan="9" class="mut" style="text-align:center;padding:30px">Sin pedidos con esos filtros.</td></tr>`}</tbody>
+    </table></div></div>`;
+}
+function panelAlmacen(){
+  const cola = ORD.filter(o=>!o.cancelado && ["confirmado","recolectado","almacen_origen"].includes(o.status));
+  const tr = ORD.filter(o=>!o.cancelado && o.status==="transito");
+  const grp = (arr) => CFG.destinos.map(d=>{
+    const a = arr.filter(o=>o.dest===d.id);
+    return {d, a, pzas:a.reduce((s,o)=>s+o.totals.piezas,0), m3:a.reduce((s,o)=>s+o.totals.m3,0), kg:a.reduce((s,o)=>s+o.totals.kg,0), kgC:a.reduce((s,o)=>s+o.totals.kgCob,0)};
+  }).filter(g=>g.a.length);
+  const maxM3 = Math.max(1,...grp(cola).map(g=>g.m3));
+  const blk = (title, arr, sub) => {
+    const gs = grp(arr);
+    return `<div class="card"><div class="h2">${title} <span class="mut sm" style="margin-left:8px;font-weight:500">${sub}</span></div>
+    ${gs.length?gs.map(g=>`<div style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><b style="font-size:16px">→ ${esc(g.d.name)}</b>
+        <span class="mono sm"><b>${g.pzas}</b> pzas · <b>${num(g.m3,2)}</b> m³ · <b>${num(g.kg,0)}</b> kg reales · <b>${num(g.kgC,0)}</b> kg cobr.</span></div>
+      <div class="bar" style="margin:6px 0 8px"><i style="width:${g.m3/maxM3*100}%"></i></div>
+      ${g.a.map(o=>`<div class="sm" style="display:flex;gap:10px;justify-content:space-between;padding:5px 0;border-top:1px solid var(--line);cursor:pointer" data-open="${esc(o.folio)}">
+        <span><b>${esc(o.folio)}</b> · ${esc(o.sol.empresa||o.sol.nombre)} · ${o.items.map(i=>`${i.qty}×${esc(itemName(i))}`).join(", ")}</span>${badge(o)}</div>`).join("")}
+    </div>`).join(""):`<div class="mut">Nada por aquí.</div>`}</div>`;
+  };
+  return `<div class="note info sm" style="margin-bottom:14px">Vista de almacén: lo que ya fue confirmado y debe recolectarse, consolidarse o cargarse, agrupado por destino. El % de barra es relativo al destino con más volumen.</div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">${blk("Por recolectar / cargar",cola,"confirmados · recolectados · en almacén")}${blk("En tránsito",tr,"unidades en ruta")}</div>`;
+}
+function panelConfig(){
+  const b = CFG.brand;
+  const sub = [["marca","Marca"],["tarifas","Tarifas"],["reglas","Reglas"],["datos","Datos"]];
+  let body="";
+  if(S.cfgTab==="marca") body = `<div class="row2">
+      <div><label>Nombre comercial</label><input data-cb="name" value="${esc(b.name)}"></div>
+      <div><label>Siglas</label><input data-cb="short" value="${esc(b.short)}"></div>
+      <div><label>Color principal (acentos / botones)</label><input type="color" data-cb="c1" value="${b.c1}" style="height:44px;padding:4px"></div>
+      <div><label>Color secundario (encabezado)</label><input type="color" data-cb="c2" value="${b.c2}" style="height:44px;padding:4px"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <img class="logo-prev" src="${esc(b.logo||LOGO_DEFAULT)}" alt="logo">
+      <div><label>Logo (PNG, JPG, SVG)</label><input type="file" id="logo-file" accept="image/*"><div class="mut sm" style="margin-top:6px">Se actualiza al instante en todo el sitio.</div>
+      ${b.logo?`<button class="btn ghost sm" data-logo-reset>Restablecer logo</button>`:""}</div>
+    </div>
+    <div class="note sm" style="margin-top:16px">El logo que viene por defecto es un placeholder tipográfico, no el oficial. Sube el original de ALR aquí.</div>`;
+  if(S.cfgTab==="tarifas") body = `
+    <div class="scroll"><table><thead><tr><th>Caja</th><th>L</th><th>A</th><th>H</th><th>kg</th>${CFG.destinos.map(d=>`<th>${esc(d.name)} $/pza</th>`).join("")}<th></th></tr></thead>
+    <tbody>${CFG.cajas.map((c,i)=>`<tr data-caja="${i}"><td><input data-cc="name" value="${esc(c.name)}" style="min-width:90px"></td>
+      ${["l","a","h","kg"].map(k=>`<td><input type="number" data-cc="${k}" value="${c[k]}" style="width:72px"></td>`).join("")}
+      ${CFG.destinos.map(d=>`<td><input type="number" step="0.01" data-cp="${d.id}" value="${c.prices[d.id]??""}" style="width:96px"></td>`).join("")}
+      <td><button class="x" data-del-caja="${i}" ${CFG.cajas.length<2?"disabled":""}>×</button></td></tr>`).join("")}</tbody></table></div>
+    <button class="btn sec sm" data-add-caja style="margin-top:10px">+ Agregar caja</button>
+    <h3 style="margin:24px 0 10px">Destinos</h3>
+    <div class="scroll"><table><thead><tr><th>Nombre</th><th>Tránsito</th><th>Solo ocurre</th><th>$/kg medida especial</th><th></th></tr></thead>
+    <tbody>${CFG.destinos.map((d,i)=>`<tr data-dest="${i}"><td><input data-cd="name" value="${esc(d.name)}"></td><td><input data-cd="transit" value="${esc(d.transit)}"></td>
+      <td><input type="checkbox" data-cd="ocurre" ${d.ocurre?"checked":""} style="width:auto"></td><td><input type="number" step="0.01" data-cd="kgRate" value="${d.kgRate}" style="width:96px"></td>
+      <td><button class="x" data-del-dest="${i}" ${CFG.destinos.length<2?"disabled":""}>×</button></td></tr>`).join("")}</tbody></table></div>
+    <button class="btn sec sm" data-add-dest style="margin-top:10px">+ Agregar destino</button>
+    <div class="note sm" style="margin-top:16px">El $/kg de medida especial es un <b>valor de referencia</b> (promedio de las 3 cajas de ALR). ALR no ha dado regla para medidas fuera de catálogo; esos pedidos salen marcados “validar”.</div>`;
+  if(S.cfgTab==="reglas") body = `<div class="row3">
+      <div><label>Origen</label><input data-cg="origen" value="${esc(CFG.origen)}"></div>
+      <div><label>Mínimo por embarque ($)</label><input type="number" data-cg="minimo" value="${CFG.minimo}"></div>
+      <div><label>IVA (%)</label><input type="number" data-cg="iva" value="${CFG.iva}"></div>
+      <div><label>Factor volumétrico (kg/m³)</label><input type="number" data-cg="volFactor" value="${CFG.volFactor}"></div>
+      <div><label>Vigencia de tarifa</label><input data-cg="vigencia" value="${esc(CFG.vigencia)}"></div>
+      <div><label>PIN del panel</label><input data-cg="pin" value="${esc(CFG.pin)}"></div>
+    </div>
+    <div class="note sm" style="margin-top:16px">Factor 556 kg/m³ = inferido de “una tarima = 1,000 kg” ÷ 1.80 m³. <b>No es dato de ALR</b>: confirmar. Si la tarima mide 1.20 m de alto, sería 694. Combustible: no aplica.</div>`;
+  if(S.cfgTab==="datos") body = `<div class="chips">
+      <button class="btn dark" data-export-cfg>Exportar configuración (JSON)</button>
+      <label class="btn sec" style="margin:0;text-transform:none;letter-spacing:0;font-size:15px;color:var(--c2)">Importar configuración<input type="file" id="cfg-file" accept=".json" hidden></label>
+      <button class="btn sec" data-export-orders>Exportar pedidos (JSON)</button>
+      <button class="btn sec" data-export-csv>Exportar pedidos (CSV)</button>
+    </div>
+    <h3 style="margin:24px 0 8px">Reiniciar demo</h3>
+    <div class="chips"><button class="btn sec sm" data-reset-orders>Restablecer pedidos de ejemplo</button><button class="btn sec sm" data-reset-all style="color:var(--bad)">Borrar todo y volver a valores de fábrica</button></div>`;
+  return `<div class="card"><div class="subtabs" style="margin-top:0">${sub.map(([k,t])=>`<button data-cfgtab="${k}" class="${S.cfgTab===k?"on":""}">${t}</button>`).join("")}</div>${body}</div>`;
+}
+
+/* ---- Detalle de pedido (drawer) ---- */
+function drawer(o){
+  const t=o.totals, d=dest(o.dest), i=stIdx(o), next=CFG.steps[i+1];
+  const j = JSON.stringify(orderJSON(o),null,2);
+  return `<div class="drawer-bg" data-close><div class="drawer">
+    <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <button class="btn sec sm" data-close>← Volver</button>
+      <div class="chips"><button class="btn sec sm" data-print="${esc(o.folio)}">🖨 Hoja de embarque</button><button class="btn sec sm" data-copytxt="${esc(o.folio)}">Copiar WhatsApp</button></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div><h2 style="font-size:24px">${esc(o.folio)}</h2><div class="mut sm">${fdate(o.createdAt)} · ${esc(CFG.origen)} → <b>${esc(d.name)}</b> (${esc(d.transit)})</div></div>
+        <div class="r">${badge(o)}<div class="sm mut" style="margin-top:6px">Guía: <b>${esc(o.guia||"—")}</b></div></div>
+      </div>
+      ${t.est?`<div class="note sm" style="margin-top:12px">⚠ Contiene medida especial. Precio estimado: validar con tarifa real antes de confirmar.</div>`:""}
+    </div>
+    ${o.cancelado?"":`<div class="card noprint">
+      <div class="h2">Control del envío</div>
+      ${next?`<div class="row2">
+        <div><label>Guía ${i<1?"(se asigna al confirmar)":""}</label><input id="d-guia" value="${esc(o.guia)}" placeholder="Número de guía"></div>
+        <div><label>Nota del checkpoint</label><input id="d-note" placeholder="Unidad, operador, ubicación, incidencia…"></div></div>
+        <div class="chips" style="margin-top:12px"><button class="btn" data-advance="${esc(o.folio)}">Marcar: ${esc(next.t)} →</button>
+        <button class="btn sec" data-saveguia="${esc(o.folio)}">Guardar guía/nota</button>
+        <select id="d-jump" style="width:auto"><option value="">Saltar a…</option>${CFG.steps.map((s,k)=>k>i?`<option value="${s.k}">${esc(s.t)}</option>`:"").join("")}</select></div>`
+        : `<div class="pill ok">Entrega completada</div>`}
+      ${o.status!=="entregado"?`<div style="margin-top:12px"><button class="btn ghost sm" style="color:var(--bad)" data-cancel="${esc(o.folio)}">Cancelar pedido</button></div>`:""}
+    </div>`}
+    <div class="card">
+      <div class="h2">Carga</div>
+      <div class="scroll"><table><thead><tr><th>Pieza</th><th class="r">Cant</th><th>Medidas</th><th class="r">kg c/u</th><th class="r">m³</th><th class="r">Importe</th></tr></thead>
+      <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kg,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="row3" style="margin-top:14px">
+        ${[["Piezas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Volumétrico",num(t.kgVol)+" kg"],["Cobrable",num(t.kgCob)+" kg"],["Total c/IVA",money(t.total)]].map(([a,b])=>`<div style="background:var(--bg);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
+      </div>
+      <div class="sm mut" style="margin-top:10px">Flete ${money(t.sub)}${t.minApplied?` → mínimo ${money(CFG.minimo)}`:""} · IVA ${money(t.iva)} · Servicios: ${[o.serv.recoleccion&&"recolección",o.serv.entrega&&"entrega a domicilio",o.serv.seguro&&"seguro"].filter(Boolean).join(", ")||"ninguno"}</div>
+    </div>
+    <div class="card"><div class="row2">
+      <div><div class="h2">Solicitante</div><b>${esc(o.sol.nombre)}</b><div class="sm">${esc(o.sol.empresa)}</div><div class="sm">${esc(o.sol.tel)}</div><div class="sm">${esc(o.sol.correo)}</div></div>
+      <div><div class="h2">Destinatario</div><b>${esc(o.dst.nombre)}</b><div class="sm">${esc(o.dst.dir)}</div><div class="sm">${esc(o.dst.tel)}</div></div>
+    </div>${o.obs?`<div class="note sm" style="margin-top:12px"><b>Obs.:</b> ${esc(o.obs)}</div>`:""}</div>
+    <div class="card"><div class="h2">Checkpoints</div>${timelineHTML(o,true)}
+      <div class="sm mut">${o.history.map(h=>`${fdate(h.at)} — ${esc(stLabel(h.k))} (${esc(h.by)})`).join("<br>")}</div></div>
+    <div class="card noprint"><div class="h2">JSON para su sistema</div><pre class="code">${esc(j)}</pre>
+      <div class="chips" style="margin-top:10px"><button class="btn sec sm" data-copyjson="${esc(o.folio)}">Copiar JSON</button><button class="btn sec sm" data-dljson="${esc(o.folio)}">Descargar</button></div></div>
+  </div></div>`;
+}
+function printSheet(o){
+  const t=o.totals,d=dest(o.dest);
+  $("#print-root").innerHTML = `<div style="font-family:Arial,sans-serif;color:#000;padding:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid ${CFG.brand.c1};padding-bottom:10px">
+      <img src="${esc(CFG.brand.logo||LOGO_DEFAULT)}" style="height:50px"><div style="text-align:right"><div style="font-size:12px">HOJA DE EMBARQUE</div><div style="font-size:26px;font-weight:800">${esc(o.folio)}</div></div></div>
+    <p style="font-size:15px"><b>Ruta:</b> ${esc(CFG.origen)} → ${esc(d.name)} (${esc(d.transit)}) &nbsp; <b>Guía:</b> ${esc(o.guia||"________")} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)}</p>
+    <table border="1" cellpadding="6" style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#eee"><th>Cant</th><th>Pieza</th><th>Medidas cm</th><th>kg c/u</th><th>m³</th><th>✓ Cargada</th></tr>
+    ${t.lines.map(l=>`<tr><td align="center"><b>${l.qty}</b></td><td>${esc(itemName(l))}</td><td>${l.l}×${l.a}×${l.h}</td><td align="right">${num(l.kg,1)}</td><td align="right">${num(l.m3,3)}</td><td></td></tr>`).join("")}
+    <tr><td align="center"><b>${t.piezas}</b></td><td colspan="2"><b>TOTAL</b></td><td align="right"><b>${num(t.kg)} kg</b></td><td align="right"><b>${num(t.m3,3)}</b></td><td></td></tr></table>
+    <p style="font-size:14px"><b>Peso volumétrico:</b> ${num(t.kgVol)} kg · <b>Cobrable:</b> ${num(t.kgCob)} kg · <b>Servicios:</b> ${[o.serv.recoleccion&&"Recolección",o.serv.entrega&&"Entrega domicilio",o.serv.seguro&&"Seguro"].filter(Boolean).join(", ")||"Ninguno"}</p>
+    <table style="width:100%;font-size:13px"><tr><td valign="top" width="50%"><b>REMITENTE</b><br>${esc(o.sol.nombre)}<br>${esc(o.sol.empresa)}<br>${esc(o.sol.tel)}</td><td valign="top"><b>DESTINATARIO</b><br>${esc(o.dst.nombre)}<br>${esc(o.dst.dir)}<br>${esc(o.dst.tel)}</td></tr></table>
+    ${o.obs?`<p style="font-size:13px"><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
+    <div style="display:flex;gap:40px;margin-top:50px;font-size:12px"><div style="flex:1;border-top:1px solid #000;padding-top:4px">Firma operador / recolección</div><div style="flex:1;border-top:1px solid #000;padding-top:4px">Firma almacén</div><div style="flex:1;border-top:1px solid #000;padding-top:4px">Firma recibe destinatario</div></div></div>`;
+  document.body.classList.add("printing");
+  setTimeout(()=>{ window.print(); document.body.classList.remove("printing"); },50);
+}
+
+/* ==================== Render + eventos ==================== */
+function render(){
+  applyBrand();
+  const app = $("#app");
+  app.innerHTML = S.view==="cotizar"?viewCotizar():S.view==="rastreo"?viewRastreo():viewPanel();
+  if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); }
+  const o = S.open && ORD.find(x=>x.folio===S.open);
+  $("#overlay").innerHTML = (o && S.view==="panel" && S.auth) ? drawer(o) : "";
+}
+const byFolio = f => ORD.find(o=>o.folio===f);
+function advance(o, k, note, by="ALR"){
+  o.status = k; o.history.push({k, at:Date.now(), note: note||"", by});
+}
+function setPath(obj, path, v){ const p=path.split("."); let c=obj; while(p.length>1) c=c[p.shift()]; c[p[0]]=v; }
+function rerenderKeep(){ const a=document.activeElement; const id=a&&a.id; const pos=a&&a.selectionStart; render(); if(id){ const e=document.getElementById(id); if(e){ e.focus(); try{e.setSelectionRange(pos,pos)}catch(_){} } } }
+
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-go],[data-ptab],[data-open],[data-close],[data-advance],[data-saveguia],[data-cancel],[data-print],[data-copytxt],[data-copyjson],[data-dljson],[data-track],[data-new],[data-logout],[data-cfgtab],[data-export-cfg],[data-export-orders],[data-export-csv],[data-reset-orders],[data-reset-all],[data-add-caja],[data-del-caja],[data-add-dest],[data-del-dest],[data-logo-reset],#q-add,#q-send,[data-p=del]");
+  if(!t) return;
+  const D = t.dataset;
+  if(D.go){ S.view=D.go; S.done=null; S.open=null; render(); scrollTo(0,0); }
+  else if(D.ptab){ S.ptab=D.ptab; render(); }
+  else if(D.cfgtab){ S.cfgTab=D.cfgtab; render(); }
+  else if("open" in D){ S.open=D.open; render(); }
+  else if("close" in D){ if(e.target===t || t.classList.contains("btn")){ S.open=null; render(); } }
+  else if(D.advance){ const o=byFolio(D.advance), i=stIdx(o); const g=$("#d-guia")?.value.trim(); if(g) o.guia=g;
+      if(i<1 && !o.guia){ toast("Asigna un número de guía para confirmar"); $("#d-guia")?.classList.add("bad"); $("#d-guia")?.focus(); return; }
+      advance(o, CFG.steps[i+1].k, $("#d-note")?.value.trim()); saveOrd(); render(); toast("Checkpoint registrado"); }
+  else if(D.saveguia){ const o=byFolio(D.saveguia); const g=$("#d-guia").value.trim(), n=$("#d-note").value.trim(); const jump=$("#d-jump").value;
+      o.guia=g; if(jump){ if(!g && stIdx(o)<1){ toast("Asigna guía primero"); return;} advance(o,jump,n||"Actualizado por ALR"); } else if(n) o.history.push({k:o.status,at:Date.now(),note:n,by:"ALR"}); saveOrd(); render(); toast("Guardado"); }
+  else if(D.cancel){ if(confirm("¿Cancelar este pedido?")){ const o=byFolio(D.cancel); o.cancelado=true; o.history.push({k:o.status,at:Date.now(),note:"Pedido cancelado",by:"ALR"}); saveOrd(); render(); } }
+  else if(D.print){ printSheet(byFolio(D.print)); }
+  else if(D.copytxt){ copy(orderTexto(byFolio(D.copytxt))); }
+  else if(D.copyjson){ copy(JSON.stringify(orderJSON(byFolio(D.copyjson)),null,2)); }
+  else if(D.dljson){ const o=byFolio(D.dljson); download(o.folio+".json", JSON.stringify(orderJSON(o),null,2)); }
+  else if(D.track){ e.preventDefault(); S.view="rastreo"; S.track=D.track; S.done=null; render(); scrollTo(0,0); }
+  else if("new" in D){ S.done=null; render(); }
+  else if("logout" in D){ S.auth=false; S.open=null; render(); }
+  else if("exportCfg" in D){ download("configuracion-alr.json", JSON.stringify(CFG,null,2)); }
+  else if("exportOrders" in D){ download("pedidos-alr.json", JSON.stringify(ORD.map(orderJSON),null,2)); }
+  else if("exportCsv" in D){
+      const rows=[["folio","fecha","estatus","guia","cliente","empresa","destino","piezas","m3","kg_reales","kg_volumetricos","kg_cobrables","subtotal","total"]];
+      ORD.forEach(o=>rows.push([o.folio,new Date(o.createdAt).toISOString(),o.cancelado?"cancelado":o.status,o.guia,o.sol.nombre,o.sol.empresa,dest(o.dest).name,o.totals.piezas,o.totals.m3.toFixed(4),o.totals.kg.toFixed(2),o.totals.kgVol.toFixed(2),o.totals.kgCob.toFixed(2),o.totals.subtotal.toFixed(2),o.totals.total.toFixed(2)]));
+      download("pedidos-alr.csv","﻿"+rows.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n"),"text/csv"); }
+  else if("resetOrders" in D){ if(confirm("¿Restablecer los pedidos de ejemplo?")){ ORD=seedOrders(); saveOrd(); render(); toast("Pedidos restablecidos"); } }
+  else if("resetAll" in D){ if(confirm("Se borrará configuración y pedidos. ¿Continuar?")){ CFG=DEFAULT_CFG(); saveCfg(); ORD=seedOrders(); saveOrd(); Q=newQ(); render(); toast("Valores de fábrica"); } }
+  else if("addCaja" in D){ CFG.cajas.push({id:"c"+Date.now(),name:"Caja nueva",l:40,a:40,h:40,kg:10,prices:Object.fromEntries(CFG.destinos.map(d=>[d.id,0]))}); saveCfg(); Q=newQ(); render(); }
+  else if(D.delCaja!==undefined){ CFG.cajas.splice(+D.delCaja,1); saveCfg(); Q=newQ(); render(); }
+  else if("addDest" in D){ CFG.destinos.push({id:"d"+Date.now(),name:"Nuevo destino",transit:"",ocurre:false,kgRate:3}); saveCfg(); Q=newQ(); render(); }
+  else if(D.delDest!==undefined){ CFG.destinos.splice(+D.delDest,1); saveCfg(); Q=newQ(); render(); }
+  else if("logoReset" in D){ CFG.brand.logo=null; saveCfg(); render(); }
+  else if(t.id==="q-add"){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); }
+  else if(t.id==="q-send"){ submitOrder(); }
+  else if(D.p==="del"){ const i=+t.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } }
+});
+
+document.addEventListener("input", e=>{
+  const t=e.target, D=t.dataset;
+  if(t.id==="q-dest"){ Q.dest=t.value; renderPieces(); renderSummary(); renderOcurre(); return; }
+  if(D.f){ setPath(Q,D.f,t.value); renderSummary(); return; }
+  if(D.serv){ Q.serv[D.serv]=t.checked; return; }
+  if(D.p){ const pc=t.closest(".piece"), it=Q.items[+pc.dataset.i];
+    if(D.p==="tipo"){ if(t.value==="custom"){ Object.assign(it,{custom:true,cajaId:null,l:"",a:"",h:"",kg:""}); } else { it.custom=false; it.cajaId=t.value; delete it.l;delete it.a;delete it.h;delete it.kg; } renderPieces(); }
+    else { it[D.p]=Math.max(0,+t.value||0); if(D.p==="qty"&&it.qty<1) it.qty=1; pc.querySelector(".meta").innerHTML = metaHTML(it); }
+    renderSummary(); return; }
+  if(t.id==="f-q"){ S.filtro=t.value; rerenderKeep(); return; }
+  if(D.cb){ CFG.brand[D.cb]=t.value; saveCfg(); applyBrand(); return; }
+  if(D.cg){ const v=t.value; CFG[D.cg]=["minimo","iva","volFactor"].includes(D.cg)?(+v||0):v; saveCfg(); return; }
+  if(D.cc){ const i=+t.closest("tr").dataset.caja; CFG.cajas[i][D.cc]=["name"].includes(D.cc)?t.value:(+t.value||0); saveCfg(); Q=newQ(); return; }
+  if(D.cp){ const i=+t.closest("tr").dataset.caja; CFG.cajas[i].prices[D.cp]=+t.value||0; saveCfg(); return; }
+  if(D.cd){ const i=+t.closest("tr").dataset.dest; CFG.destinos[i][D.cd]=D.cd==="ocurre"?t.checked:D.cd==="kgRate"?(+t.value||0):t.value; saveCfg(); Q=newQ(); return; }
+});
+document.addEventListener("change", e=>{
+  const t=e.target;
+  if(t.id==="f-est"){ S.fEstado=t.value; render(); }
+  else if(t.id==="f-dst"){ S.fDest=t.value; render(); }
+  else if(t.id==="d-jump"){ /* se aplica con "Guardar" */ }
+  else if(t.id==="logo-file"){ const f=t.files[0]; if(!f) return; if(f.size>1.5e6){ toast("Imagen muy pesada (máx. 1.5 MB)"); return; }
+    const r=new FileReader(); r.onload=()=>{ CFG.brand.logo=r.result; saveCfg(); render(); toast("Logo actualizado"); }; r.readAsDataURL(f); }
+  else if(t.id==="cfg-file"){ const f=t.files[0]; if(!f) return; const r=new FileReader();
+    r.onload=()=>{ try{ const c=JSON.parse(r.result); if(!c.cajas||!c.destinos||!c.brand) throw 0; CFG=c; saveCfg(); Q=newQ(); render(); toast("Configuración importada"); }catch(_){ toast("Archivo de configuración inválido"); } }; r.readAsText(f); }
+  else if(t.dataset.cd==="ocurre"||t.dataset.cc||t.dataset.cp){ /* ya guardado en input */ }
+});
+document.addEventListener("submit", e=>{
+  if(e.target.id==="t-form"){ e.preventDefault(); S.track=$("#t-in").value; render(); }
+  if(e.target.id==="pin-form"){ e.preventDefault(); if($("#pin").value===CFG.pin){ S.auth=true; render(); } else { toast("PIN incorrecto"); $("#pin").value=""; } }
+});
+window.addEventListener("storage", e=>{ if(e.key===KEY_ORD){ ORD=store.get(KEY_ORD)||ORD; if(!(document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) render(); }
+  if(e.key===KEY_CFG){ CFG=store.get(KEY_CFG)||CFG; } });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.open){ S.open=null; render(); } });
+
+render();
+</script>
+</body>
+</html>
