@@ -3,7 +3,7 @@ const S = { view:"cotizar", mod:"dash", modals:[], drawer:null, done:null, track
   fEstado:"todos", fDest:"todos", fq:"", fCliQ:"", ftab:"fac", docTab:"rem", cfgTab:"marca", repDays:30, logQ:"", vtab:"activos", cliSel:null,
   scan:{mode:"auto", via:"", ord:"", feed:[], cam:false}, scanResult:null, pendingScan:null };
 let Q = null;
-const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, obs:"" });
+const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, notif:{wa:false,mail:false}, obs:"" });
 Q = newQ();
 const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id===it.cajaId)||CFG.cajas[0]; return {...it, cajaId:c.id, l:c.l,a:c.a,h:c.h,kg:c.kg}; };
 
@@ -72,6 +72,8 @@ function viewCotizar(){
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">ALR la coordina; el costo de maniobras se confirma al aceptar el pedido.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="entrega" ${Q.serv.entrega?"checked":""}><span><b>Entrega en domicilio del destinatario</b><br><span class="mut sm">Costo de reparto se confirma por ALR.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">ALR te contactará con el procedimiento (factura con subtotal).</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="wa" ${Q.notif.wa?"checked":""}><span><b>Enviarme mi guía y avances por WhatsApp</b><br><span class="mut sm">Se abre WhatsApp con el mensaje listo para enviar.</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="mail" ${Q.notif.mail?"checked":""}><span><b>Enviarme mi guía y avances por correo</b><br><span class="mut sm">Se abre tu correo con el mensaje listo.</span></span></label>
         </div>
       </div>
       <div class="card">
@@ -95,7 +97,7 @@ function viewCotizar(){
       </div>
     </div>
     <aside class="sticky"><div class="card sum" id="q-sum"></div></aside>
-  </div></div>`;
+  </div></div><div class="qbar" id="q-bar"></div>`;
 }
 function metaHTML(it){
   const p = pieceCalc(withDims(it), Q.dest), w = withDims(it);
@@ -159,26 +161,32 @@ function renderSummary(){
     <button class="btn" data-act="qsend" style="width:100%;margin-top:16px;padding:14px" ${c.total>0&&v.ok?"":"disabled"}>Confirmar pedido</button>
     <div class="mut sm" style="margin-top:8px;text-align:center">${esc(v.msg)||"Sin pago en línea. ALR confirma tu pedido y te asigna guía."}</div>
     <div class="mut sm" style="margin-top:10px;text-align:center">Tarifa vigente ${esc(CFG.vigencia)}</div>`;
+  const qb=$("#q-bar"); if(qb) qb.innerHTML=`<div><span class="xs mut">Total con IVA</span><b class="mono">${money(c.total)}</b></div><button class="btn" data-act="qgo">${c.total>0&&v.ok?"Confirmar pedido":"Completar datos"}</button>`;
 }
 function renderOcurre(){ const d=dest(Q.dest); $("#q-ocurre").innerHTML = d.ocurre?`<div class="note" style="margin-top:12px">Este destino se atiende <b>solo ocurre</b>: el destinatario recoge en la terminal de ALR.</div>`:""; }
 
 function viewDone(){
   const o = ordOf(S.done); if(!o){ S.done=null; return viewCotizar(); }
-  return `<div class="wrap" style="padding-top:30px;max-width:720px">
+  const txt=shareText(o), wa=waLink(o.sol.tel,txt), ml=mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,txt);
+  return `<div class="wrap" style="padding-top:24px;max-width:760px">
     <div class="card" style="text-align:center">
       <div class="ok-big">✓</div>
       <h1 style="font-size:26px">¡Pedido recibido!</h1>
-      <p class="mut">ALR lo revisará y te confirmará con tu guía de envío.</p>
+      <p class="mut">ALR lo revisará y confirmará. Ya puedes bajar tu guía y tus etiquetas.</p>
       <div style="margin:18px 0;padding:16px;background:var(--bg);border-radius:12px">
         <div class="mut sm">Tu folio</div><div style="font-size:30px;font-weight:800;color:var(--c1);letter-spacing:1px">${esc(o.folio)}</div>
         <div class="mut sm">Total ${money(o.totals.total)} · ${esc(CFG.origen)} → ${esc(dest(o.dest).name)} · ${o.totals.piezas} cajas</div>
       </div>
       ${etaBox(o.dest,o.createdAt)}
-      <div class="note info sm" style="margin:16px 0;text-align:left"><b>Siguiente paso:</b> imprime una etiqueta QR por cada caja y pégala en un lugar visible. ALR las escanea al recibir, cargar y entregar, y tú ves en cuál punto va cada una.</div>
-      <div class="chips" style="justify-content:center">
-        <button class="btn" data-act="labels" data-arg="${esc(o.folio)}">Imprimir etiquetas QR (${o.totals.piezas})</button>
+      <div style="text-align:left;margin-top:18px"><div class="tag" style="margin-bottom:8px">Qué sigue</div>
+        <div class="pstep now"><span class="pn">1</span><div style="flex:1"><b>Descarga tu pre-guía</b><div class="sm mut">Es la hoja con el detalle y el precio. Llévala o mándala a tu almacén.</div></div><button class="btn sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Ver / guardar PDF</button></div>
+        <div class="pstep"><span class="pn">2</span><div style="flex:1"><b>Descarga y pega las etiquetas QR</b><div class="sm mut">Una por caja, con las medidas máximas declaradas.</div></div><button class="btn sm" data-act="labels" data-arg="${esc(o.folio)}">Ver etiquetas</button></div>
+        <div class="pstep"><span class="pn">3</span><div style="flex:1"><b>Entrega tus cajas en el almacén</b><div class="sm mut">Al llegar, ALR cuenta las cajas y tú ves el avance en tu seguimiento.</div></div></div></div>
+      <div class="chips" style="justify-content:center;margin-top:16px">
+        <button class="btn dark" data-act="labzip" data-arg="${esc(o.folio)}">Descargar etiquetas (imágenes)</button>
+        <a class="btn ${o.notif&&o.notif.wa?"":"sec"}" href="${esc(wa)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        <a class="btn ${o.notif&&o.notif.mail?"":"sec"}" href="${esc(ml)}" target="_blank" rel="noopener">Enviar por correo</a>
         <button class="btn sec" data-act="track" data-arg="${esc(o.folio)}">Ver seguimiento</button>
-        <button class="btn sec" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar resumen</button>
         <button class="btn sec" data-act="newquote">Nueva cotización</button>
       </div>
       <p class="mut sm" style="margin-top:16px">Guarda tu folio: con él consultas el estado de tu envío cuando quieras.</p>
@@ -214,6 +222,7 @@ function viewRastreo(){
   <div class="wrap pull" style="max-width:760px">
     <div class="card">
       <form data-form="track" style="display:flex;gap:10px"><label for="t-in" style="display:none">Folio o guía</label><input id="t-in" placeholder="Ej. ALR-2026-0003 o ALR-G-48202" value="${esc(S.track)}" style="flex:1"><button class="btn">Buscar</button></form>
+      ${(()=>{ const mis=(store.get("alr_mis_v1")||[]).filter(f=>ordOf(f)).slice(0,6); return mis.length?`<div class="sm" style="margin-top:10px"><b>Tus pedidos en este dispositivo:</b> ${mis.map(f=>`<a href="#rastreo" data-act="track" data-arg="${esc(f)}" style="color:var(--c1);font-weight:700">${esc(f)}</a>`).join(" · ")}</div>`:""; })()}
       <div class="mut sm" style="margin-top:8px">Prueba con: ${DB.ord.filter(x=>x.rem).slice(0,3).map(x=>`<a href="#rastreo" data-act="track" data-arg="${esc(x.folio)}" style="color:var(--c1)">${esc(x.folio)}</a>`).join(" · ")}</div>
     </div>
     ${S.track&&!o?`<div class="card"><b>No encontramos ese folio.</b><div class="mut sm">Verifica que esté completo (ej. ALR-2026-0001).</div></div>`:""}
@@ -237,7 +246,7 @@ function viewEtiquetas(){
     <div class="card noprint" style="margin-bottom:16px">
       <div class="h2">Etiquetas QR · ${esc(o.folio)}</div>
       <p class="mut" style="margin:0 0 12px">Una etiqueta por caja (${L.total}). Imprímelas y pégalas en un lugar plano y visible. ALR las escanea con el teléfono al recibir, cargar y entregar.</p>
-      <div class="chips">${SANDBOX?"":`<button class="btn" data-act="printlabels">Imprimir etiquetas</button>`}<button class="btn sec" data-act="${S.back==="sistema"?"back":"track"}" data-arg="${esc(o.folio)}">← Volver</button>
+      <div class="chips">${SANDBOX?"":`<button class="btn" data-act="printlabels">Imprimir etiquetas</button>`}<button class="btn dark" data-act="labzip" data-arg="${esc(o.folio)}">Descargar etiquetas (imágenes)</button><button class="btn sec" data-act="${S.back==="sistema"?"back":"track"}" data-arg="${esc(o.folio)}">← Volver</button>
       ${L.shown<L.total?`<button class="btn sec" data-act="labmore">Mostrar más (${L.shown} de ${L.total})</button>`:""}</div>
       ${SANDBOX?`<div class="note info sm" style="margin-top:12px">Para imprimir, abre el sistema en su dirección web (esta vista previa no permite imprimir).</div>`:""}
     </div>

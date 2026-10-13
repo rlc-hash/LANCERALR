@@ -1,10 +1,11 @@
 /* ==================== Render y acciones ==================== */
 function render(){
-  applyBrand();
+  applyBrand(); document.body.dataset.view=S.view;
   const v = {cotizar:viewCotizar, rastreo:viewRastreo, sistema:viewSistema, etiquetas:viewEtiquetas}[S.view] || viewCotizar;
   $("#app").innerHTML = v();
   if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); }
   renderOverlay(); attachCam();
+  $$("table.rt").forEach(t=>{ const hs=[...t.querySelectorAll("thead th")].map(h=>h.textContent.trim()); t.querySelectorAll("tbody tr").forEach(tr=>[...tr.children].forEach((td,i)=>{ if(hs[i]) td.setAttribute("data-label",hs[i]); })); });
   if(S.view==="sistema" && S.mod==="scan" && ROLE){ const i=$("#scan-in"); if(i && !S.noFocus) i.focus(); }
 }
 function setPath(obj, path, v){ const p=path.split("."); let c=obj; while(p.length>1) c=c[p.shift()]; c[p[0]]=v; }
@@ -32,16 +33,61 @@ const ACT = {
   printlabels(){ window.print(); },
   doc(arg){ const [t,id]=arg.split("|");
     if(t==="mani"){ const v=viaOf(id); if(v) openDoc(manifestoDoc(v),`Manifiesto ${v.id}`); return; }
-    const o=ordOf(id); if(!o) return;
+    const o=ordOf(id); if(!o) return; if(t==="guia"){ o.pr=o.pr||{}; o.pr.guia=true; saveDB(); }
     const ex=`<div class="noprint"><div class="h2" style="margin:16px 0 0">Resumen del envío</div>${envioResumen(o)}</div>`;
     if(t==="guia") openDoc(guiaDoc(o),`Guía ${o.guia||o.folio}`,ex); else openDoc(remisionDoc(o),`Remisión ${o.rem||o.folio}`,ex); },
-  labels(f,el){ S.lab=f; S.labN=48; S.back=el&&el.dataset.from==="sistema"?"sistema":null; S.backOrd=f; S.view="etiquetas"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
+  labels(f,el){ const oo=ordOf(f); if(oo){ oo.pr=oo.pr||{}; oo.pr.lab=true; saveDB(); } S.lab=f; S.labN=48; S.back=el&&el.dataset.from==="sistema"?"sistema":null; S.backOrd=f; S.view="etiquetas"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
   back(){ S.view="sistema"; S.drawer=S.backOrd||null; render(); },
   labmore(){ S.labN+=96; render(); },
   track(f,el,e){ if(e) e.preventDefault(); S.view="rastreo"; S.track=f; S.done=null; S.drawer=null; render(); scrollTo(0,0); },
   newquote(){ S.done=null; Q=newQ(); render(); },
   copytxt(f){ const o=ordOf(f); if(o) copy(orderTexto(o)); },
   copyfield(id){ const e=document.getElementById(id); if(e) copy(e.value); },
+  /* operación sencilla por pedido */
+  accion(arg){ const [f,k]=arg.split("|"); openAccion(f,k); },
+  confirmord2(f){ const o=ordOf(f); confirmOrder(o); closeModal(); render(); toast(`Confirmado · guía ${o.guia}`); },
+  kstep(d){ const i=$("#ac-k"); if(!i) return; const max=+i.dataset.max||0; i.value=Math.max(0,Math.min(max,(parseInt(i.value,10)||0)+(+d))); },
+  kall(m){ const i=$("#ac-k"); if(i) i.value=m; },
+  dorecibir(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0;
+    if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
+    const m=accRecibir(o,k,($("#ac-n")||{}).value.trim()); closeModal(); render(); toast(m<max?`${m} de ${max} cajas recibidas (queda incidencia)`:`${m} cajas recibidas ✓`); },
+  docargar(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0, via=($("#ac-via")||{}).value;
+    if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
+    const v=viaOf(via), oc=viajeOcc(v), n=o.sc.length, pct=Math.max((oc.m3l+k*o.totals.m3/n)/oc.cap.m3,(oc.kgl+k*o.totals.kg/n)/oc.cap.kg);
+    if(pct>1 && !ask(`Con estas cajas la unidad pasa de su capacidad (${Math.round(pct*100)}%)`)) return;
+    const m=accCargar(o,k,via); closeModal(); render(); toast(`${m} cajas cargadas en ${v.unidad} · ${Math.round(Math.min(pct,9.99)*100)}%`); },
+  dollegar(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0;
+    if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
+    const m=accLlegar(o,k); closeModal(); render(); toast(`${m} cajas llegaron a destino`); },
+  quickvia(f){ const o=ordOf(f), u=($("#qv-u")||{}).value.trim(); if(!u){ toast("Escribe el nombre de la unidad","bad"); return; }
+    const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:"—",operador:($("#qv-o").value.trim()||"—"),dest:o.dest,tipo:$("#qv-t").value,status:"abierto",ords:[],fecha:Date.now()};
+    DB.via.unshift(v); logEv("Viajes","Viaje creado",`${v.id} · ${u}`); saveDB(); S.modals.pop(); openAccion(f,"cargar"); },
+  medcheck(f){ const o=ordOf(f), it=o.items[+$("#mc-it").value], g=id=>parseFloat($(id).value);
+    const l=g("#mc-l"),a=g("#mc-a"),h=g("#mc-h"),k=g("#mc-k"); if(![l,a,h,k].every(x=>x>0)){ toast("Captura las 4 medidas","bad"); return; }
+    const tol=2, ex=[]; [["largo",l,it.l],["ancho",a,it.a],["alto",h,it.h]].forEach(([n,m,d])=>{ if(m>d+tol) ex.push(`${n} ${num(m,1)} cm (declarado ${d})`); }); if(k>it.kg*1.05) ex.push(`peso ${num(k,1)} kg (declarado ${num(it.kg,1)})`);
+    const res=$("#mc-res");
+    if(!ex.length){ res.innerHTML=`<div class="note ok sm"><b>Dentro de lo declarado ✓</b> (tolerancia ${tol} cm / 5% en peso)</div>`; S.mc=null; return; }
+    const decl=pieceCalc(it,o.dest).line, ratio=Math.max((l*a*h)/(it.l*it.a*it.h), k/it.kg, 1), est=decl*ratio, diff=Math.max(0,est-decl);
+    S.mc={folio:f,txt:`${itemName(it)}: excede en ${ex.join(", ")}`,diff};
+    res.innerHTML=`<div class="note bad sm"><b>Excede lo declarado:</b> ${esc(ex.join(" · "))}.<br>Si las ${it.qty} cajas de este tipo miden así, el flete sería ~<b>${money(est)}</b> vs ${money(decl)} declarado${diff>0?` → ajuste aprox. <b>${money(diff)}</b>`:""} (proporcional al volumen y peso; ALR define el cobro final).</div><button class="btn sm" style="margin-top:8px" data-act="medinc">Registrar incidencia</button>`; },
+  medinc(){ const m=S.mc; if(!m) return; const o=ordOf(m.folio); addInc(o,"medidas",m.txt,m.diff); logEv("Operación","Medidas fuera de lo declarado",`${o.folio} · ${m.txt}`); saveDB(); S.mc=null; $("#mc-res").innerHTML=`<div class="note ok sm">Incidencia registrada en el pedido.</div>`; },
+  sign(arg){ const [f,k]=arg.split("|"); openSign(f,k); },
+  sgclear(){ const c=$("#sg-c"); if(c){ c.getContext("2d").clearRect(0,0,c.width,c.height); sgDirty=false; } },
+  sgsave(arg){ const [f,kind]=arg.split("|"), o=ordOf(f), n=($("#sg-n")||{}).value.trim();
+    if(!n){ toast("Escribe el nombre","bad"); return; } const img=firmaImg(); if(!img){ toast("Falta la firma: dibújala con el dedo","bad"); return; }
+    if(kind==="entrega") accEntregar(o,{nombre:n,id:($("#sg-i")||{}).value.trim(),notas:($("#sg-o")||{}).value.trim(),firma:img});
+    else { o.firmas=o.firmas||{}; o.firmas.remitente={nombre:n,img,at:Date.now()}; logEv("Operación","Firma del remitente",`${o.folio} · ${n}`); saveDB(); }
+    closeModal(); render(); toast(kind==="entrega"?"Entrega guardada con firma":"Firma guardada"); },
+  newpractice(){ const o=crearPractica(); S.mod="practica"; render(); toast(`Pedido de práctica ${o.folio} creado`); },
+  delpractice(){ if(!ask("¿Borrar los pedidos de práctica?")) return; const fs=DB.ord.filter(o=>o.practice).map(o=>o.folio);
+    DB.ord=DB.ord.filter(o=>!o.practice); DB.via.forEach(v=>{ v.ords=v.ords.filter(x=>!fs.includes(x)); }); DB.fac=DB.fac.filter(f=>!f.ords.every(x=>fs.includes(x))); saveDB(); render(); toast("Prácticas borradas"); },
+  practdocs(f){ const o=ordOf(f); o.pr=o.pr||{}; o.pr.guia=true; o.pr.lab=true; saveDB(); ACT.labels(f,{dataset:{from:"sistema"}}); },
+  practsalida(f){ const o=ordOf(f); if(!o.viaje||!viaOf(o.viaje)){ toast("Primero carga las cajas a un camión","bad"); return; } ACT.viasalida(o.viaje); },
+  operf(k){ S.operF=k; render(); },
+  labzip(f){ etiquetasZip(ordOf(f)); },
+  qgo(){ const v=qvalid(); if(v.ok){ ACT.qsend(); return; } toast(v.msg,"bad");
+    const order=[["f-sn",Q.sol.nombre.trim()],["f-sc",/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())],["f-st",Q.sol.tel.replace(/\D/g,"").length>=8],["f-dn",Q.dst.nombre.trim()],["f-dd",Q.dst.dir.trim()],["f-dt",Q.dst.tel.replace(/\D/g,"").length>=8]];
+    const bad=order.find(([id,ok])=>!ok); if(bad){ const e=document.getElementById(bad[0]); if(e){ e.scrollIntoView({block:"center",behavior:"smooth"}); e.focus(); } } },
   /* cotizador */
   qadd(){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); },
   pdel(a,el){ const i=+el.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } },
@@ -51,8 +97,7 @@ const ACT = {
   advance(f){ const o=ordOf(f), i=stIdx(o); if(i<1){ toast("Confirma primero el pedido","bad"); return; }
     const k=CFG.steps[i+1].k; advance(o,k,($("#d-note")||{}).value||""); if(k==="entregado"){ for(let n=1;n<=o.sc.length;n++) setBox(o,n,5); if(!o.pod) o.pod={nombre:"Registrado por ALR",id:"",notas:"",at:Date.now()}; }
     logEv("Pedidos","Checkpoint",`${o.folio} → ${stLabel(k)}`); saveDB(); render(); toast("Checkpoint registrado"); },
-  entrega(f){ const o=ordOf(f), n=($("#p-n")||{}).value.trim(); if(!n){ toast("Escribe quién recibe","bad"); return; }
-    registrarEntrega(o,n,$("#p-i").value.trim(),$("#p-o").value.trim()); render(); toast("Entrega registrada"); },
+  entrega(f){ openSign(f,"entrega"); },
   cancelord(f){ if(!ask("¿Cancelar este pedido?")) return; const o=ordOf(f); o.cancelado=true; o.history.push({k:o.status,at:Date.now(),note:"Pedido cancelado",by:ROLES[ROLE].t}); logEv("Pedidos","Cancelado",o.folio); saveDB(); render(); },
   orderjson(f){ const o=ordOf(f); download(o.folio+".json", JSON.stringify(orderJSON(o),null,2), "application/json"); },
   exportorders(){ download("pedidos-alr.csv", csvOrders(DB.ord), "text/csv"); },
@@ -132,6 +177,7 @@ const CH = {
   svia(v){ S.scan.via=v; refreshScan(); }, sord(v){ S.scan.ord=v; refreshScan(); },
   repdays(v){ S.repDays=v; render(); },
   qserv(v,el){ Q.serv[el.dataset.arg]=el.checked; },
+  qnotif(v,el){ Q.notif[el.dataset.arg]=el.checked; },
   cfgocurre(v,el){ CFG.destinos[+el.dataset.arg].ocurre=el.checked; saveCfg(); },
   descon(v,el){ CFG.desc.on=el.checked; saveCfg(); },
   logofile(v,el){ const f=el.files[0]; if(!f) return; if(f.size>1.5e6){ toast("Imagen muy pesada (máx. 1.5 MB)","bad"); return; }
@@ -144,10 +190,11 @@ const FORM = {
   login(f){ const pin=$("#pin").value; let role=f.querySelector("input[name=role]:checked").value;
     if(pin===CFG.devPin) role="dev"; else if(pin!==CFG.pin){ toast("PIN incorrecto","bad"); $("#pin").value=""; return; }
     ROLE=role; store.set(KEY_ROLE,role); S.mod=ROLES[role].mods[0]; logEv("Acceso","Inicio de sesión",ROLES[role].t); saveDB();
-    if(S.pendingScan){ S.mod="scan"; runPendingScan(); } render(); },
+    if(S.pendingScan){ S.mod="scan"; runPendingScan(); } if(S.pendingGuia){ render(); runPendingScan(); return; } render(); },
+  guia(){ const i=$("#gi"), f=i.value.trim().toUpperCase(); if(!f) return; i.value=""; guiaPendiente(f); },
   scan(){ const i=$("#scan-in"), c=i.value.trim(); if(!c) return; submitScan(c); i.value=""; i.focus(); },
   newvia(){ const u=$("#nv-u").value.trim(); if(!u){ toast("Escribe la unidad","bad"); return; }
-    const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:$("#nv-p").value.trim()||"—",operador:$("#nv-o").value.trim()||"—",dest:$("#nv-d").value,status:"abierto",ords:[],fecha:Date.now()};
+    const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:$("#nv-p").value.trim()||"—",operador:$("#nv-o").value.trim()||"—",dest:$("#nv-d").value,tipo:$("#nv-t").value,status:"abierto",ords:[],fecha:Date.now()};
     DB.via.unshift(v); logEv("Viajes","Viaje creado",`${v.id} · ${u}`); saveDB(); render(); toast("Viaje creado"); }
 };
 document.addEventListener("click", e=>{
@@ -169,10 +216,14 @@ window.addEventListener("storage", e=>{ if(e.key===KEY_DB && e.newValue){ try{ D
 /* ==================== Arranque ==================== */
 /* Una caja escaneada con la cámara normal del teléfono abre la dirección #s.FOLIO.CAJA.TOTAL y se registra sola. */
 function takeScanHash(){
-  const h=(location.hash||"").slice(1); if(!h.startsWith("s.")) return false;
+  const h=(location.hash||"").slice(1); let m;
+  if(m=h.match(/^g\.([A-Za-z0-9-]+)$/)){ S.pendingGuia=m[1]; S.view="sistema"; S.mod="oper"; try{ history.replaceState(null,"","#sistema"); }catch(e){} return true; }
+  if(m=h.match(/^t\.([A-Za-z0-9-]+)$/)){ S.view="rastreo"; S.track=m[1]; S.done=null; return true; }
+  if(!h.startsWith("s.")) return false;
   S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
 }
 function runPendingScan(){
+  if(S.pendingGuia&&ROLE){ const f=S.pendingGuia; S.pendingGuia=null; setTimeout(()=>guiaPendiente(f),0); return; }
   if(!S.pendingScan||!ROLE) return;
   if(!allowed("scan")){ S.scanResult={ok:false,kind:"bad",msg:"Tu perfil no puede registrar escaneos"}; S.pendingScan=null; return; }
   const r=doScan(S.pendingScan,"auto",{via:S.scan.via}); S.pendingScan=null; r.at=Date.now();

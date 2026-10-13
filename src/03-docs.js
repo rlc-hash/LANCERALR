@@ -5,32 +5,41 @@ function docHead(titulo, folio, qrText, extra){
     <div style="display:flex;gap:12px;align-items:center;text-align:right"><div><div style="font-size:11px;letter-spacing:1px">${esc(titulo)}</div><div style="font-size:24px;font-weight:800">${esc(folio)}</div>${extra||""}</div><div class="qr">${qrSVG(qrText)}</div></div></div>`;
 }
 function servTxt(o){ return [o.serv.recoleccion&&"Recolección en domicilio",o.serv.entrega&&"Entrega en domicilio",o.serv.seguro&&"Seguro"].filter(Boolean).join(", ")||"Ninguno"; }
-function cargaTabla(o){
+function cargaTabla(o, precio){
   const t=o.totals;
-  return `<table style="width:100%;border-collapse:collapse"><thead><tr><th>Cant.</th><th>Descripción</th><th>Medidas (cm)</th><th>kg c/u</th><th>m³</th></tr></thead><tbody>
-    ${t.lines.map(l=>`<tr><td class="c"><b>${l.qty}</b></td><td>${esc(itemName(l))}</td><td>${l.l}×${l.a}×${l.h}</td><td class="r">${num(l.kg,1)}</td><td class="r">${num(l.m3,3)}</td></tr>`).join("")}
-    <tr><td class="c"><b>${t.piezas}</b></td><td colspan="2"><b>TOTAL</b></td><td class="r"><b>${num(t.kg)} kg</b></td><td class="r"><b>${num(t.m3,3)}</b></td></tr></tbody></table>`;
+  const pr = precio ? `<th>P. unit.</th><th>Importe</th>` : "";
+  const cols = precio ? 7 : 5;
+  const totales = precio ? `
+    <table style="margin:10px 0 0 auto;width:300px;border-collapse:collapse"><tr><td>Flete</td><td class="r">${money(t.sub)}</td></tr>
+    ${t.discPct?`<tr><td>Descuento por volumen ${t.discPct}%</td><td class="r">−${money(t.disc)}</td></tr>`:""}
+    ${t.minApplied?`<tr><td>Mínimo por embarque</td><td class="r">${money(CFG.minimo)}</td></tr>`:""}
+    <tr><td>Subtotal</td><td class="r">${money(t.subtotal)}</td></tr><tr><td>IVA ${CFG.iva}%</td><td class="r">${money(t.iva)}</td></tr><tr><td><b>Total</b></td><td class="r"><b>${money(t.total)}</b></td></tr></table>
+    ${t.est?`<div style="font-size:11px;margin-top:4px">Incluye medida especial: precio estimado, sujeto a validación de ALR.</div>`:""}` : "";
+  return `<table style="width:100%;border-collapse:collapse"><thead><tr><th>Cant.</th><th>Descripción</th><th>Medidas (cm)</th><th>kg c/u</th><th>m³</th>${pr}</tr></thead><tbody>
+    ${t.lines.map(l=>`<tr><td class="c"><b>${l.qty}</b></td><td>${esc(itemName(l))}</td><td>${l.l}×${l.a}×${l.h}</td><td class="r">${num(l.kgU,1)}</td><td class="r">${num(l.m3,3)}</td>${precio?`<td class="r">${money(l.unit)}</td><td class="r">${money(l.line)}</td>`:""}</tr>`).join("")}
+    <tr><td class="c"><b>${t.piezas}</b></td><td colspan="2"><b>TOTAL</b> (${num(t.kg)} kg)</td><td class="r"><b>${num(t.kg)} kg</b></td><td class="r"><b>${num(t.m3,3)}</b></td>${precio?`<td></td><td class="r"><b>${money(t.sub)}</b></td>`:""}</tr></tbody></table>${totales}`;
 }
 function partes(o){
   return `<div class="two"><div><b>REMITENTE</b><br>${esc(o.sol.empresa||o.sol.nombre)}<br>${esc(o.sol.nombre)} · ${esc(o.sol.tel)}<br>${esc(o.sol.correo)}</div>
     <div><b>DESTINATARIO</b><br>${esc(o.dst.nombre)}<br>${esc(o.dst.dir)}<br>${esc(o.dst.tel)}</div></div>`;
 }
 function guiaDoc(o){
-  const e=eta(o.dest,o.createdAt);
-  return `<div class="doc">${docHead("GUÍA DE EMBARQUE", o.guia||"(por asignar)", `ALR-GUIA|${o.guia||o.folio}|${o.folio}`)}
+  const e=eta(o.dest,o.createdAt), f=(o.firmas||{}).remitente;
+  return `<div class="doc">${docHead(o.guia?"GUÍA DE EMBARQUE":"PRE-GUÍA · HOJA DE EMBARQUE", o.guia||o.folio, `${qrBase()}#g.${o.folio}`)}
+    ${o.guia?"":`<p class="wm">Pre-guía: queda sujeta a confirmación de ${esc(CFG.brand.short)}. Entrega esta hoja con tus cajas; el QR abre el pedido en el almacén.</p>`}
     <p style="font-size:14px"><b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)} &nbsp; <b>Ruta:</b> ${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> (${esc(dest(o.dest).transit)})${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o)}
-    <p><b>Servicios:</b> ${esc(servTxt(o))} &nbsp; <b>Cajas con etiqueta QR:</b> ${o.totals.piezas}</p>${o.obs?`<p><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
-    <div class="sig"><div>Firma remitente</div><div>Firma operador / recolección</div><div>Firma almacén</div></div></div>`;
+    ${partes(o)}${cargaTabla(o,true)}
+    <p><b>Servicios:</b> ${esc(servTxt(o))} &nbsp; <b>Cajas a etiquetar:</b> ${o.totals.piezas}</p>${o.obs?`<p><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
+    <div class="sig"><div>${firmaTag(f&&f.img,"firma remitente")}Firma remitente${f?` · ${esc(f.nombre)}`:""}</div><div>Firma operador / recolección</div><div>Firma almacén</div></div></div>`;
 }
 function remisionDoc(o){
-  const e=eta(o.dest,o.createdAt);
-  return `<div class="doc">${docHead("REMISIÓN DE ENTREGA", o.rem||"(sin remisión)", `ALR-REM|${o.rem||""}|${o.folio}`)}
+  const e=eta(o.dest,o.createdAt), p=o.pod;
+  return `<div class="doc">${docHead("REMISIÓN DE ENTREGA", o.rem||"(sin remisión)", `${qrBase()}#g.${o.folio}`)}
     <p style="font-size:14px"><b>Guía:</b> ${esc(o.guia||"—")} &nbsp; <b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)}${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o)}
+    ${partes(o)}${cargaTabla(o,true)}
     <p>Recibí de conformidad la mercancía descrita, en buen estado y completa (${o.totals.piezas} bultos).</p>
-    ${o.pod?`<p><b>Recibió:</b> ${esc(o.pod.nombre)} ${o.pod.id?`· ID: ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)}</p>`:""}
-    <div class="sig"><div>Nombre y firma de quien recibe</div><div>Fecha y hora</div><div>Operador ALR</div></div>
+    ${p?`<p><b>Recibió:</b> ${esc(p.nombre)} ${p.id?`· ID: ${esc(p.id)}`:""} · ${fdate(p.at)}${p.notas?` · ${esc(p.notas)}`:""}</p>`:""}
+    <div class="sig"><div>${firmaTag(p&&p.firma,"firma de quien recibe")}Nombre y firma de quien recibe${p?` · ${esc(p.nombre)}`:""}</div><div>${p?fdate(p.at):""}<br>Fecha y hora</div><div>Operador ${esc(CFG.brand.short)}</div></div>
     <p class="wm">Documento operativo. La factura fiscal (CFDI) se emite por separado.</p></div>`;
 }
 function manifestoDoc(v){
@@ -57,8 +66,8 @@ function factDoc(f){
 }
 function etiquetasHTML(o, limit){
   const n=o.sc.length, lim=Math.min(n, limit||48);
-  let h=""; for(let i=1;i<=lim;i++){
-    h+=`<div class="lab"><div class="qr">${qrSVG(boxCode(o.folio,i,n))}</div><div class="t"><b>${esc(dest(o.dest).name)}</b><div class="big">${i}<span style="font-size:14px;font-weight:700"> / ${n}</span></div><div><b>${esc(o.folio)}</b></div><div>${esc(o.dst.nombre)}</div><div>De: ${esc(o.sol.empresa||o.sol.nombre)}</div><div>Guía ${esc(o.guia||"por asignar")}</div></div></div>`;
+  let h=""; for(let i=1;i<=lim;i++){ const it=itemOfBox(o,i);
+    h+=`<div class="lab"><div class="qr">${qrSVG(boxCode(o.folio,i,n))}</div><div class="t"><b>${esc(dest(o.dest).name)}</b><div class="big">${i}<span style="font-size:14px;font-weight:700"> / ${n}</span></div><div><b>${esc(o.folio)}</b></div><div>${esc(o.dst.nombre)}</div><div>${esc(CFG.brand.short)} · ${esc(o.guia||"pre-guía")}</div>${it?`<div style="margin-top:3px"><b>${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg</b><br><span style="font-size:10px">medidas máximas declaradas</span></div>`:""}</div></div>`;
   }
   return {html:h, shown:lim, total:n};
 }

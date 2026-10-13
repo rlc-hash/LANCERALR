@@ -1,5 +1,5 @@
 /* ==================== Reportes ==================== */
-function repOrders(){ const lim = S.repDays==="0" ? 0 : Date.now()-(+S.repDays)*DAY; return DB.ord.filter(o=>!o.cancelado && o.createdAt>=lim); }
+function repOrders(){ const lim = S.repDays==="0" ? 0 : Date.now()-(+S.repDays)*DAY; return DB.ord.filter(o=>!o.cancelado && !o.practice && o.createdAt>=lim); }
 function entregaDias(o){ const h=[...o.history].reverse().find(x=>x.k==="entregado"); return h ? (h.at-o.createdAt)/DAY : null; }
 function modReportes(){
   const os=repOrders();
@@ -47,6 +47,8 @@ function modConfig(){
     <td><input aria-label="Solo ocurre" type="checkbox" data-ch="cfgocurre" data-arg="${i}" ${d.ocurre?"checked":""}></td><td><input aria-label="Precio por kg" type="number" step="0.01" data-in="cfgarr" data-num="1" data-arg="destinos|${i}|kgRate" value="${d.kgRate}" style="width:90px"></td>
     <td><button class="x" data-act="deldest" data-arg="${i}" ${CFG.destinos.length<2?"disabled":""} aria-label="Quitar">×</button></td></tr>`).join("")}</tbody></table></div>
     <button class="btn sec sm" data-act="adddest" style="margin-top:10px">+ Agregar destino</button>
+    <h3 style="margin:24px 0 10px">Unidades (capacidad de referencia)</h3>
+    <div class="scroll"><table><thead><tr><th>Unidad</th><th>m³ útiles</th><th>kg máximos</th></tr></thead><tbody>${Object.entries(CFG.camiones).map(([k,t])=>`<tr><td><input aria-label="Nombre" data-in="cfg" data-arg="camiones.${k}.t" value="${esc(t.t)}"></td><td><input aria-label="m3" type="number" data-in="cfg" data-num="1" data-arg="camiones.${k}.m3" value="${t.m3}" style="width:100px"></td><td><input aria-label="kg" type="number" data-in="cfg" data-num="1" data-arg="camiones.${k}.kg" value="${t.kg}" style="width:110px"></td></tr>`).join("")}</tbody></table></div>
     <div class="note sm" style="margin-top:16px">Los días de tránsito alimentan la fecha estimada de entrega que ve el cliente (días hábiles, con salida al siguiente día hábil). Déjalos vacíos si el destino no tiene tiempo definido. El $/kg de medida especial es un valor de referencia, no una tarifa de ALR.</div>`;
   if(S.cfgTab==="desc") body=`<label class="chk"><input type="checkbox" data-ch="descon" ${CFG.desc.on?"checked":""}><span><b>Aplicar descuento por volumen</b><br><span class="mut sm">Descuenta un porcentaje del flete según el número total de cajas del pedido.</span></span></label>
     <div class="scroll" style="margin-top:14px"><table><thead><tr><th>Desde (cajas)</th><th>Descuento %</th><th></th></tr></thead><tbody>${CFG.desc.tiers.map((t,i)=>`<tr><td><input aria-label="Desde" type="number" data-in="cfgarr" data-num="1" data-arg="desc.tiers|${i}|desde" value="${t.desde}" style="width:110px"></td><td><input aria-label="Porcentaje" type="number" step="0.5" data-in="cfgarr" data-num="1" data-arg="desc.tiers|${i}|pct" value="${t.pct}" style="width:110px"></td><td><button class="x" data-act="deltier" data-arg="${i}" aria-label="Quitar">×</button></td></tr>`).join("")}</tbody></table></div>

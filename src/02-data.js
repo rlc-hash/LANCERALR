@@ -51,9 +51,10 @@ function createOrder(q){
   const items = q.items.map(i=>{ const w=withDims(i); return {...w, qty:Math.max(1,parseInt(i.qty,10)||1)}; });
   const cl = findOrCreateCliente(q.sol);
   const o = { folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:q.dest, items, sol:{...q.sol}, dst:{...q.dst}, serv:{...q.serv}, obs:q.obs.trim(),
-    guia:"", cancelado:false, status:"solicitado", cli:cl.id, rem:null, fac:[], pod:null, history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
+    guia:"", cancelado:false, status:"solicitado", cli:cl.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{...(q.notif||{})}, practice:false, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
   o.totals = calc(o.dest, items); o.sc = "0".repeat(o.totals.piezas);
   DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} cajas · ${money(o.totals.total)}`); saveDB();
+  const mis=store.get("alr_mis_v1")||[]; mis.unshift(o.folio); store.set("alr_mis_v1",mis.slice(0,20));
   return o;
 }
 function confirmOrder(o){
@@ -99,7 +100,8 @@ function doScan(code, mode, ctx){
   setBox(o,p.n,st.i);
   syncStatus(o);
   logEv("Escáner",st.t,`${o.folio} caja ${p.n}/${p.total}`); saveDB();
-  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n, stage:st};
+  const itx=itemOfBox(o,p.n);
+  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n, stage:st, dim:`Debe medir ${itx.l}×${itx.a}×${itx.h} cm · ${num(itx.kg,1)} kg`};
 }
 function viajeFaltantes(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]<2) f++; }); return f; }
 function viajeCargadas(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]===2) f++; }); return f; }
@@ -259,12 +261,15 @@ function seedDB(){
   fOrd(o7,"emitida",false,10);          // vence en 5 días -> vencida
   fOrd(o9,"emitida",false,3);
   const fp=fOrd(o3,"emitida",false,1); fp.pagos.push({at:now,monto:20000,forma:"03",ref:"Anticipo SPEI"});
+  [["trailer"],["trailer"],["torton"],["rabon"]].forEach((t,i)=>{ if(db.via[i]) db.via[i].tipo=t[0]; });
+  db.ord.forEach(o=>{ o.inc=[]; o.firmas={}; o.notif={}; o.pr={}; });
   db.log=[]; logEv("Sistema","Datos de ejemplo cargados","8 clientes, 10 pedidos, 4 viajes, 4 facturas");
   return db;
 }
 function loadDB(){
   DB = store.get(KEY_DB);
   if(!DB || !DB.cli || !DB.ord){ seedDB(); saveDB(); }
-  DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); });
+  DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; });
+  DB.via.forEach(v=>{ if(!v.tipo) v.tipo="torton"; });
 }
 loadDB();

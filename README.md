@@ -18,6 +18,9 @@ Panel general · Pedidos (confirmar, guía, remisión, checkpoints, entrega con 
 
 Los datos viven en `localStorage` del navegador (demo).
 
+## Operación sencilla (v7)
+Pensada para una fletera que hoy lo hace todo a mano: **un toque por pedido, no una lectura por caja**. En *Operación* cada pedido muestra su siguiente paso (recibir, cargar, llegó, entregar) con un botón grande y el conteo de cajas; si el conteo no cuadra queda una incidencia. El QR de la guía abre el pedido directo en ese paso. El QR por caja sigue disponible (*Escaneo por caja*) para quien quiera control fino. Unidades con % de ocupación (Rabón, Torton, Tráiler), firma con el dedo, guía/remisión con precio, práctica guiada y modo móvil con barra inferior (instalable en iPhone/Android desde `manifest.webmanifest`).
+
 ## Pendientes con ALR
 Logo oficial en alta resolución · azul de marca · razón social y RFC reales · factor volumétrico (556 kg/m³ es inferido) · regla para medidas especiales · tabla de recolección/entrega · descuentos por volumen · origen · IVA.
 Para producción: backend compartido, PAC para timbrar (y complemento Carta Porte), usuarios individuales.

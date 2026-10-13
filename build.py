@@ -4,14 +4,14 @@ import re, sys, pathlib
 R = pathlib.Path(__file__).parent
 S = R/"src"
 rd = lambda p: (S/p).read_text()
-app = "\n".join(rd(f) for f in ["00-logo.js","01-core.js","02-data.js","03-docs.js","04-ui.js","05-erp.js","06-ops.js","07-fin.js","08-admin.js","09-main.js"])
+app = "\n".join(rd(f) for f in ["00-logo.js","01-core.js","02-data.js","03-docs.js","04-ui.js","05-erp.js","06-ops.js","07-fin.js","08-admin.js","10-oper.js","09-main.js"])
 app = '"use strict";\n' + app.replace('"use strict";\n','',1)
 head = '''<!doctype html>
 <html lang="es-MX">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cotizador ALR</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+@@EXTRA@@<title>Cotizador ALR</title>
 <style>
 %s
 </style>
@@ -38,9 +38,11 @@ head = '''<!doctype html>
 </body>
 </html>
 ''' % (rd("style.css"), rd("vendor/qrcode.js"), rd("vendor/jsQR.js"), app)
-(R/"index.html").write_text(head)
+extra='<meta name="theme-color" content="#14327d">\n<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="mobile-web-app-capable" content="yes">\n<meta name="apple-mobile-web-app-title" content="ALR">\n<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">\n<link rel="manifest" href="manifest.webmanifest">\n<link rel="apple-touch-icon" href="apple-touch-icon.png">\n<link rel="icon" href="icon-192.png">\n'
+(R/"index.html").write_text(head.replace('@@EXTRA@@',extra))
+head=head.replace('@@EXTRA@@','')
 art = re.sub(r'<!doctype html>\s*<html[^>]*>\s*<head>\s*','',head)
-art = art.replace('</head>\n<body>\n','').replace('</body>\n</html>\n','').replace('<meta charset="utf-8">\n','').replace('<meta name="viewport" content="width=device-width,initial-scale=1">\n','')
+art = art.replace('</head>\n<body>\n','').replace('</body>\n</html>\n','').replace('<meta charset="utf-8">\n','').replace('<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n','')
 out = sys.argv[1] if len(sys.argv)>1 else str(R/"artifact.html")
 pathlib.Path(out).write_text(art)
 print("index.html", len(head), "bytes; artifact", len(art))

@@ -15,15 +15,15 @@ function viewSistema(){
       <label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
       <button class="btn" style="width:100%;margin-top:12px">Entrar</button>
     </form>
-    ${S.pendingScan?`<div class="note info sm" style="margin-top:12px">Inicia sesión para registrar la caja que escaneaste.</div>`:""}
+    ${S.pendingScan||S.pendingGuia?`<div class="note info sm" style="margin-top:12px">Inicia sesión para abrir lo que escaneaste.</div>`:""}
     <div class="mut sm" style="margin-top:12px">Demo: PIN <b>${esc(CFG.pin)}</b>. Cada perfil ve solo los módulos que le corresponden.</div></div></div>`;
   if(!allowed(S.mod)) S.mod = ROLES[ROLE].mods[0];
   const porConf = DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
   const venc = DB.fac.filter(f=>facEstado(f)==="vencida").length;
   const nb = {pedidos:porConf, fact:venc};
   const nav = ROLES[ROLE].mods.map(m=>`<button class="nv ${S.mod===m?"on":""}" data-act="mod" data-arg="${m}"><span>${MODS[m].ic}</span>${MODS[m].t}${nb[m]?`<span class="n">${nb[m]}</span>`:""}</button>`).join("");
-  const body = {dash:modDash,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
-  return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}</aside><div class="main">${body}</div></div>`;
+  const body = {dash:modDash,oper:modOper,practica:modPractica,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
+  return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}<button class="nv" data-act="logout"><span>⎋</span>Salir</button></aside><div class="main">${body}</div></div>`;
 }
 /* ---- resumen de envío (se reutiliza en facturas, guías, remisiones y escáner) ---- */
 function envioLinea(o){
@@ -59,6 +59,7 @@ function modDash(){
   act.filter(atrasado).forEach(o=>alerts.push({k:"bad",t:`${o.folio} con retraso`,s:`Debió llegar ${etaText(eta(o.dest,o.createdAt))} · ${stLabel(o.status)}`,a:"open",arg:o.folio}));
   DB.fac.filter(f=>facEstado(f)==="vencida").forEach(f=>alerts.push({k:"bad",t:`Factura ${f.id} vencida`,s:`${cliOf(f.cli).razon} · saldo ${money(facSaldo(f))}`,a:"modgo",arg:"fact"}));
   DB.via.filter(v=>v.status==="cargando").forEach(v=>alerts.push({k:"warn",t:`${v.id} cargando (${v.unidad})`,s:`Faltan ${viajeFaltantes(v)} cajas por subir · destino ${dest(v.dest).name}`,a:"modgo",arg:"viajes"}));
+  act.filter(o=>(o.inc||[]).some(x=>x.tipo==="medidas")).forEach(o=>alerts.push({k:"bad",t:`${o.folio} con medidas fuera de lo declarado`,s:"Revisar ajuste de tarifa",a:"open",arg:o.folio}));
   act.filter(o=>o.totals.est&&o.status==="solicitado").forEach(o=>alerts.push({k:"warn",t:`${o.folio} con medida especial`,s:"Validar precio antes de confirmar",a:"open",arg:o.folio}));
   DB.cli.filter(c=>c.pendiente).forEach(c=>alerts.push({k:"warn",t:`Cliente ${c.razon} sin datos fiscales`,s:"Completar RFC y régimen para facturar",a:"modgo",arg:"clientes"}));
   const porEtapa = CFG.steps.map(s=>({t:s.t,n:act.filter(o=>o.status===s.k).length}));
@@ -105,7 +106,7 @@ function modPedidos(){
       <span class="mut sm" style="margin-left:auto">${list.length} pedido(s)</span>
       <button class="btn sec sm" data-act="exportorders">Exportar</button>
     </div>
-    <div class="scroll"><table>
+    <div class="scroll"><table class="rt">
       <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Destino</th><th>Entrega est.</th><th class="r">Cajas</th><th class="r">m³</th><th class="r">Total</th><th>Escaneo</th><th>Estatus</th></tr></thead>
       <tbody>${list.map(o=>{ const c=stageCounts(o), e=eta(o.dest,o.createdAt), n=o.sc.length, rec=n-c[0];
         return `<tr class="click" data-act="open" data-arg="${esc(o.folio)}">
@@ -132,7 +133,7 @@ function drawerHTML(o){
   return `<div class="drawer-bg" data-act="drawerbg"><div class="drawer">
     <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn sec sm" data-act="closedrawer">← Volver</button>
-      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">WhatsApp</button></div>
+      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><a class="btn sec sm" href="${esc(waLink(o.sol.tel,shareText(o)))}" target="_blank" rel="noopener">Enviar WhatsApp</a><a class="btn sec sm" href="${esc(mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,shareText(o)))}" target="_blank" rel="noopener">Enviar correo</a><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar</button></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -144,6 +145,7 @@ function drawerHTML(o){
       ${atrasado(o)?`<div class="note bad sm" style="margin-top:12px">Este pedido va con retraso respecto a la fecha estimada.</div>`:""}
     </div>
     ${o.status==="solicitado"&&!o.cancelado?`<div class="card noprint" style="border:2px solid var(--c1)"><div class="h2">Confirmar pedido</div><p class="mut sm" style="margin:0 0 12px">Al confirmar se asigna número de guía y se genera la remisión. El cliente lo ve de inmediato en su seguimiento.</p><button class="btn" data-act="confirmord" data-arg="${esc(o.folio)}">Confirmar y generar guía + remisión</button></div>`:""}
+    ${(o.inc||[]).length?`<div class="card" style="border:2px solid #e0a21b"><div class="h2">Incidencias <span class="pill warn">${o.inc.length}</span></div>${o.inc.map(x=>`<div class="sm" style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(x.tipo==="medidas"?"Medidas":x.tipo==="conteo"?"Conteo":"Nota")}</b> · ${esc(x.detalle)}${x.extra>0?` · ajuste estimado <b>${money(x.extra)}</b>`:""}<div class="xs mut">${fdate(x.at)} · ${esc(x.por)}</div></div>`).join("")}</div>`:""}
     <div class="card"><div class="h2">Cajas escaneadas <span class="pill ${n-c[0]===n?"ok":"warn"}">${n-c[0]} de ${n} recibidas</span></div>
       ${boxProgress(o,false)}
       ${stIdx(o)>=1&&falt?`<div class="note sm" style="margin-top:10px"><b>Faltan por recibir en almacén:</b> cajas ${esc(falt)}</div>`:""}
@@ -154,15 +156,13 @@ function drawerHTML(o){
     ${o.cancelado?"":`<div class="card noprint"><div class="h2">Control del envío</div>
       ${next&&i>=1?`<div class="row2"><div><label for="d-note">Nota del checkpoint</label><input id="d-note" placeholder="Unidad, operador, ubicación, incidencia…"></div><div style="align-self:end"><button class="btn" data-act="advance" data-arg="${esc(o.folio)}">Marcar: ${esc(next.t)} →</button></div></div>`:""}
       ${i<1?`<div class="mut sm">Confirma el pedido para habilitar el seguimiento.</div>`:""}
-      ${o.status!=="entregado"&&i>=1?`<div class="h2" style="margin-top:18px">Registrar entrega con firma</div>
-        <div class="row3"><div><label for="p-n">Quién recibe</label><input id="p-n" placeholder="Nombre"></div><div><label for="p-i">Identificación</label><input id="p-i" placeholder="INE / folio"></div><div><label for="p-o">Notas</label><input id="p-o" placeholder="Opcional"></div></div>
-        <button class="btn ok sm" style="margin-top:10px" data-act="entrega" data-arg="${esc(o.folio)}">Registrar entrega completa</button>`:""}
-      ${o.pod?`<div class="note ok sm" style="margin-top:12px"><b>Entrega:</b> ${esc(o.pod.nombre)} ${o.pod.id?`· ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)} ${o.pod.notas?`· ${esc(o.pod.notas)}`:""}</div>`:""}
+      ${o.status!=="entregado"&&i>=1?`<div class="h2" style="margin-top:18px">Operación del pedido</div><div class="chips">${siguientePaso(o)?`<button class="btn" data-act="accion" data-arg="${esc(o.folio)}|${siguientePaso(o).k}">${esc(siguientePaso(o).t)}</button>`:""}<button class="btn sec" data-act="sign" data-arg="${esc(o.folio)}|remitente">Firma del remitente</button><button class="btn ok" data-act="accion" data-arg="${esc(o.folio)}|entregar">Entregar y firmar</button></div>`:""}
+      ${o.pod?`<div class="note ok sm" style="margin-top:12px"><b>Entrega:</b> ${esc(o.pod.nombre)} ${o.pod.id?`· ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)} ${o.pod.notas?`· ${esc(o.pod.notas)}`:""}${o.pod.firma?`<div style="margin-top:6px"><img src="${o.pod.firma}" alt="firma" style="max-height:70px;background:#fff;border-radius:8px;border:1px solid var(--line)"></div>`:""}</div>`:""}
       ${o.status!=="entregado"?`<div style="margin-top:14px"><button class="btn ghost sm" style="color:var(--bad)" data-act="cancelord" data-arg="${esc(o.folio)}">Cancelar pedido</button></div>`:""}
     </div>`}
     <div class="card"><div class="h2">Carga y tarifa</div>
       <div class="scroll"><table><thead><tr><th>Pieza</th><th class="r">Cant</th><th>Medidas</th><th class="r">kg c/u</th><th class="r">m³</th><th class="r">Importe</th></tr></thead>
-      <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kg,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
+      <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kgU,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
       <div class="row3" style="margin-top:14px">
         ${[["Cajas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Subtotal",money(t.subtotal)],["IVA",money(t.iva)],["Total",money(t.total)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
       </div>

@@ -11,7 +11,7 @@ function scanOrders(){ return DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1&&o.stat
 function scanFeedHTML(){
   const f=S.scan.feed;
   if(!f.length) return `<div class="mut sm">Aún no hay escaneos. Escanea una etiqueta, escribe el código o usa "Simular siguiente caja".</div>`;
-  return f.slice(0,14).map(r=>`<div class="it ${r.kind}" ${r.o?`data-act="open" data-arg="${esc(r.o.folio)}" style="cursor:pointer" title="Ver envío completo"`:""}><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.75">${fdate(r.at)}${r.o?` · toca para ver el envío`:""}</div></div></div>`).join("");
+  return f.slice(0,14).map(r=>`<div class="it ${r.kind}" ${r.o?`data-act="open" data-arg="${esc(r.o.folio)}" style="cursor:pointer" title="Ver envío completo"`:""}><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.85">${r.dim?`<b>${esc(r.dim)}</b> · `:""}${fdate(r.at)}${r.o?` · toca para ver el envío`:""}</div></div></div>`).join("");
 }
 function scanReconHTML(){
   const auto = S.scan.mode==="auto";
@@ -32,12 +32,14 @@ function scanReconHTML(){
 }
 function refreshScan(){ const a=$("#scan-feed"); if(a) a.innerHTML=scanFeedHTML(); const b=$("#scan-recon"); if(b) b.innerHTML=scanReconHTML(); }
 function submitScan(code){
+  const g=String(code).match(/#g\.([A-Za-z0-9-]+)\s*$/); if(g){ beep(true); guiaPendiente(g[1]); return; }
   const res = doScan(code, S.scan.mode, {via:S.scan.via});
   S.scan.feed.unshift({...res, at:Date.now()}); if(S.scan.feed.length>40) S.scan.feed.pop();
   if(res.o && res.kind!=="bad" && !S.scan.ord) S.scan.ord=res.o.folio;
   if(res.o && res.ok) S.scan.ord=res.o.folio;
   S.scanResult=null; const rc=$("#scan-result"); if(rc) rc.remove();
   beep(res.ok); refreshScan();
+  if(S.mod!=="scan") toast(res.msg+(res.dim?` · ${res.dim}`:""), res.ok?"":"bad");
   const sel=$("#sc-ord"); if(sel && S.scan.ord) sel.value=S.scan.ord;
 }
 function nextSimStage(o, mode){
@@ -80,7 +82,7 @@ function scanResultCard(r){
   const o=r.o, n=o?o.sc.length:0, c=o?stageCounts(o):null;
   return `<div class="card" id="scan-result" style="margin-bottom:16px;border:3px solid ${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="ok-big" style="margin:0;background:${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">${r.ok?"✓":r.kind==="warn"?"!":"✕"}</div>
-    <div style="flex:1;min-width:220px"><div style="font-size:20px;font-weight:800">${esc(r.msg)}</div>${o?`<div class="mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>`:""}</div></div>
+    <div style="flex:1;min-width:220px"><div style="font-size:20px;font-weight:800">${esc(r.msg)}</div>${r.dim?`<div style="margin-top:4px"><b>${esc(r.dim)}</b> <span class="mut sm">(mídela: no debe excederse)</span></div>`:""}${o?`<div class="mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>`:""}</div></div>
     ${o?`<div style="margin-top:14px">${boxProgress(o,true)}</div><div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`:`<div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button></div>`}</div>`;
 }
 function modScan(){
@@ -123,7 +125,8 @@ function modViajes(){
       <div><label for="nv-u">Unidad</label><input id="nv-u" placeholder="Unidad 214"></div>
       <div><label for="nv-p">Placas</label><input id="nv-p" placeholder="NL-48-221"></div>
       <div><label for="nv-o">Operador</label><input id="nv-o" placeholder="Nombre"></div>
-      <div><label for="nv-d">Destino</label><select id="nv-d">${CFG.destinos.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select></div></div>
+      <div><label for="nv-d">Destino</label><select id="nv-d">${CFG.destinos.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select></div>
+      <div><label for="nv-t">Tipo de unidad</label><select id="nv-t">${Object.entries(CFG.camiones).map(([k,t])=>`<option value="${k}">${esc(t.t)} · ${t.m3} m³ · ${num(t.kg,0)} kg</option>`).join("")}</select></div></div>
       <button class="btn sm" style="margin-top:12px">Crear viaje</button></form></div>
   <div class="subtabs"><button class="${S.vtab==="activos"?"on":""}" data-act="vtab" data-arg="activos">Activos</button><button class="${S.vtab==="cerrados"?"on":""}" data-act="vtab" data-arg="cerrados">Cerrados</button></div>
   <div class="grid g2">${lista.map(viajeCard).join("")||`<div class="card mut">No hay viajes en esta lista.</div>`}</div>`;
@@ -132,8 +135,8 @@ function viajeCard(v){
   const f=viajeFaltantes(v), cg=viajeCargadas(v), tot=viajeBoxes(v);
   const stc = {abierto:"",cargando:"warn",en_ruta:"red",llegado:"ok",cerrado:"dark"}[v.status];
   const elig = DB.ord.filter(o=>!o.cancelado&&o.dest===v.dest&&stIdx(o)>=1&&o.status!=="entregado"&&!v.ords.includes(o.folio)&&(!o.viaje||["cerrado","llegado"].includes((viaOf(o.viaje)||{}).status)));
-  return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><h3>${esc(v.id)} · ${esc(v.unidad)}</h3><div class="sm mut">${esc(v.placas)} · ${esc(v.operador)} → <b>${esc(dest(v.dest).name)}</b></div></div><span class="pill ${stc}">${esc(VIA_ST[v.status])}</span></div>
-    <div class="row3" style="margin:12px 0"><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cajas asignadas</div><b class="mono">${tot}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cargadas</div><b class="mono">${tot-f}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Faltan</div><b class="mono" style="color:${f?"var(--bad)":"var(--ok)"}">${f}</b></div></div>
+  return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><h3>${esc(v.id)} · ${esc(v.unidad)} <span class="pill">${esc(viajeCap(v).t)}</span></h3><div class="sm mut">${esc(v.placas)} · ${esc(v.operador)} → <b>${esc(dest(v.dest).name)}</b></div></div><span class="pill ${stc}">${esc(VIA_ST[v.status])}</span></div>
+    <div style="margin:12px 0 4px">${viajeOccHTML(v)}</div><div class="row3" style="margin:12px 0"><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cajas asignadas</div><b class="mono">${tot}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cargadas</div><b class="mono">${tot-f}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Faltan</div><b class="mono" style="color:${f?"var(--bad)":"var(--ok)"}">${f}</b></div></div>
     ${v.ords.map(fo=>{ const o=ordOf(fo); if(!o) return ""; const c=stageCounts(o), cgo=c[2]+c[3]+c[4]+c[5]; return `<div class="sm" style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line);cursor:pointer" data-act="open" data-arg="${esc(o.folio)}"><span><b>${esc(o.folio)}</b> · ${esc(o.sol.empresa||o.sol.nombre)}</span><span class="mono">${cgo}/${o.sc.length}</span></div>`; }).join("")||`<div class="mut sm">Sin pedidos asignados.</div>`}
     <div class="chips noprint" style="margin-top:12px">
       ${["abierto","cargando"].includes(v.status)?`<button class="btn sm" data-act="viacargar" data-arg="${v.id}">Escanear carga</button><button class="btn dark sm" data-act="viasalida" data-arg="${v.id}">Registrar salida</button>`:""}
@@ -155,5 +158,6 @@ function modAlmacen(){
   const totA=by(1).reduce((s,x)=>s+x.n,0), m3A=by(1).reduce((s,x)=>s+x.m3,0), totP=by(0).reduce((s,x)=>s+x.n,0), totC=by(2).reduce((s,x)=>s+x.n,0);
   return `${ptitle("Almacén")}
   <div class="kpis"><div class="kpi w"><small>Por recibir</small><b>${totP}</b><span>cajas confirmadas sin escanear</span></div><div class="kpi b"><small>En almacén</small><b>${totA}</b><span>${num(m3A,1)} m³ ocupados</span></div><div class="kpi"><small>Cargadas en unidad</small><b>${totC}</b><span>esperando salida</span></div></div>
-  <div class="grid g3">${blk("Por recibir","confirmadas, aún sin llegar",by(0),"recibida")}${blk("En almacén","recibidas y escaneadas",by(1),"cargada")}${blk("Cargadas en unidad","listas para salir",by(2),"")}</div>`;
+  <div class="grid g3">${blk("Por recibir","confirmadas, aún sin llegar",by(0),"recibida")}${blk("En almacén","recibidas y escaneadas",by(1),"cargada")}${blk("Cargadas en unidad","listas para salir",by(2),"")}</div>
+  <h3 style="margin:24px 0 10px">Unidades de hoy</h3>${unidadesHoyHTML()}`;
 }

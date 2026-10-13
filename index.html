@@ -2,7 +2,15 @@
 <html lang="es-MX">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14327d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ALR">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <title>Cotizador ALR</title>
 <style>
 :root{
@@ -206,6 +214,51 @@ footer{padding:26px 16px;text-align:center;color:var(--mut);font-size:12px}
 .scanbox label{color:#cfd8ea}
 @media(max-width:600px){ .brand .pill{display:none} header.top .wrap{gap:8px} nav.tabs{gap:2px} nav.tabs button{padding:8px 7px;font-size:12.5px} .brand img{height:36px} }
 .mini{display:flex;gap:4px;margin:12px 0 4px}.mini span{flex:1;height:8px;border-radius:6px;background:#e3e8f0}.mini span.d{background:var(--ok)}.mini span.c{background:var(--c1)}
+
+/* ===== v7 ===== */
+html{-webkit-text-size-adjust:100%} *{-webkit-tap-highlight-color:transparent} button,select,input{touch-action:manipulation}
+.occ{margin:8px 0}.occ-h{display:flex;justify-content:space-between;font-size:13px}.occ-t{height:12px;border-radius:9px;background:#e9edf5;overflow:hidden;margin:4px 0}
+.occ-t i{display:block;height:100%;background:var(--c2);border-radius:9px}.occ-t i.hi{background:#e0a21b}.occ-t i.over{background:var(--bad)}
+.opscan{margin-bottom:12px}
+.opchips{display:flex;gap:8px;overflow-x:auto;margin:14px 0;padding-bottom:4px}
+.opchips button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:10px 16px;font-weight:700;cursor:pointer;display:flex;gap:8px;align-items:center}
+.opchips button b{background:var(--soft);border-radius:99px;padding:0 8px;min-width:24px;text-align:center}
+.opchips button.on{background:var(--c2);color:#fff;border-color:var(--c2)}.opchips button.on b{background:rgba(255,255,255,.2)}
+.oplist{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.opc{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.opc-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.opc-b{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn.big{flex:1;min-height:52px;font-size:17px}
+.pstep{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;margin-bottom:8px;border:1.5px solid var(--line);background:#fff;text-align:left}
+.pstep .pn{width:30px;height:30px;border-radius:50%;background:#e3e8f0;color:#64708a;display:grid;place-items:center;font-weight:800;flex:none}
+.pstep.ok{background:#f1faf5;border-color:#b9e2c8}.pstep.ok .pn{background:var(--ok);color:#fff}
+.pstep.now{border-color:var(--c1);box-shadow:0 0 0 3px color-mix(in srgb,var(--c1) 15%,transparent)}.pstep.now .pn{background:var(--c1);color:#fff}
+.sgpad{width:100%;height:auto;aspect-ratio:700/260;border:2px dashed #9aa5bb;border-radius:12px;background:#fff;touch-action:none;display:block;cursor:crosshair}
+.qbar{display:none}
+details summary{padding:6px 0}
+@media(max-width:900px){
+  input,select,textarea{font-size:16px}
+  .btn{min-height:44px}
+  .erp{display:block}
+  .side{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;z-index:35;display:flex;gap:2px;overflow-x:auto;padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-right:0;border-bottom:0;border-top:1px solid var(--line);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+  .side button.nv{flex-direction:column;gap:2px;font-size:11px;min-width:76px;padding:6px 8px;text-align:center;white-space:nowrap;flex:none;align-items:center;position:relative}
+  .side button.nv>span:first-child{font-size:20px;line-height:1}
+  .side button.nv .n{position:absolute;top:0;right:10px;margin:0}
+  .main{padding:14px 12px 100px}
+  .drawer{width:100%;padding:14px 12px}
+  .modal>.card{margin-top:2vh;padding:16px}
+  .opc-b .btn.big{flex-basis:100%}
+  .qbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 16px rgba(0,0,0,.1)}
+  .qbar b{font-size:22px;display:block;color:var(--c2)}
+  body[data-view=cotizar] footer,body[data-view=etiquetas] footer{padding-bottom:90px}
+  table.rt thead{display:none}
+  table.rt,table.rt tbody,table.rt tr,table.rt td{display:block;width:100%}
+  table.rt tr{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;background:#fff}
+  table.rt td{display:flex;justify-content:space-between;gap:12px;border:0;padding:5px 0;text-align:right}
+  table.rt td::before{content:attr(data-label);font-weight:700;color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.4px;text-align:left;flex:none}
+  table.rt td:not([data-label])::before{display:none}
+  table.rt td .chips{justify-content:flex-end}
+}
 
 </style>
 </head>
@@ -12639,7 +12692,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v6", APP_DATE = "13 oct 2026";
+const APP_VERSION = "v7", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -12672,18 +12725,23 @@ const DEFAULT_CFG = () => ({
     {id:"c2", name:"Caja 2", l:70, a:47, h:34, kg:30, prices:{qro:90.63, mty:110.08, nld:129.47}},
     {id:"c3", name:"Caja 3", l:50, a:50, h:50, kg:15, prices:{qro:18.95, mty:18.96, nld:32.23}}
   ],
+  camiones:{
+    rabon:{t:"Rabón", m3:28, kg:6000},
+    torton:{t:"Torton", m3:45, kg:12000},
+    trailer:{t:"Tráiler 43'", m3:75, kg:22000}
+  },
   steps:[
     {k:"solicitado",       t:"Solicitud recibida",       d:"ALR recibió tu pedido y lo está revisando."},
-    {k:"confirmado",       t:"Confirmado por ALR",       d:"Pedido aceptado y guía asignada."},
-    {k:"recolectado",      t:"Mercancía recolectada",    d:"Tu carga ya está en poder de ALR."},
-    {k:"almacen_origen",   t:"En almacén de origen",     d:"Cajas recibidas y escaneadas en almacén."},
-    {k:"transito",         t:"En tránsito",              d:"Tu carga va en camino al destino."},
-    {k:"almacen_destino",  t:"En plaza de destino",      d:"Llegó a la plaza; en proceso de entrega."},
+    {k:"confirmado",       t:"Pedido aceptado",          d:"ALR aceptó tu pedido y asignó tu guía."},
+    {k:"recolectado",      t:"Recolectado",              d:"ALR ya recogió tu carga."},
+    {k:"almacen_origen",   t:"En almacén de origen",     d:"Tus cajas llegaron al almacén de ALR y fueron contadas."},
+    {k:"transito",         t:"En camino",                d:"Tu carga va en camino al destino."},
+    {k:"almacen_destino",  t:"Llegó a destino",          d:"Tu carga llegó a la plaza; está por entregarse."},
     {k:"entregado",        t:"Entregado",                d:"Mercancía entregada al destinatario."}
   ]
 });
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
-(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; });
+(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
 const saveCfg = () => store.set(KEY_CFG, CFG);
 
@@ -12699,16 +12757,16 @@ const stageColor = i => ["#dfe5f0","#9bb4e6","#4f78d4","#e0a21b","#b06ad8","#168
 
 /* ==================== Roles ==================== */
 const ROLES = {
-  admin:   {t:"Dirección ALR",      mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora"], who:"Operación completa"},
-  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes"], who:"Pedidos, clientes y facturación"},
-  almacen: {t:"Almacén",            mods:["dash","pedidos","scan","viajes","almacen","docs"], who:"Recepción, carga y viajes"},
-  operador:{t:"Operador de unidad", mods:["scan","viajes"], who:"Escáner y su viaje"},
-  dev:     {t:"LANCER · Desarrollo", mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora"], who:"Acceso interno de LANCER", hidden:true}
+  admin:   {t:"Dirección ALR",      mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora","practica"], who:"Operación completa"},
+  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes","practica"], who:"Pedidos, clientes y facturación"},
+  almacen: {t:"Almacén",            mods:["oper","viajes","almacen","pedidos","docs","dash","scan","practica"], who:"Recibir, cargar y entregar"},
+  operador:{t:"Operador de unidad", mods:["oper","viajes","practica"], who:"Su viaje: cargar, llegar y entregar"},
+  dev:     {t:"LANCER · Desarrollo", mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora","practica"], who:"Acceso interno de LANCER", hidden:true}
 };
 const MODS = {
-  dash:{t:"Panel general",ic:"▦"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escáner QR",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
+  dash:{t:"Panel general",ic:"▦"}, oper:{t:"Operación",ic:"✋"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escaneo por caja",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
   almacen:{t:"Almacén",ic:"▣"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
-  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}
+  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}, practica:{t:"Práctica guiada",ic:"✎"}
 };
 
 /* ==================== Cálculo de tarifa ==================== */
@@ -12735,7 +12793,7 @@ function calc(destId, items){
   const lines = items.map(it=>{
     const p = pieceCalc(it,destId);
     m3+=p.m3; kg+=p.kg; kgVol+=p.kgVol; kgCob+=it.custom?Math.max(p.kg,p.kgVol):p.kg; sub+=p.line; piezas+=it.qty; est=est||p.est;
-    return {...it, ...p};
+    return {...it, ...p, kgU:it.kg};
   });
   const pct = discPct(piezas), disc = sub*pct/100, net = sub-disc;
   const minApplied = net>0 && net<CFG.minimo;
@@ -12817,6 +12875,16 @@ let _askKey=null, _askT=0;
 function ask(msg){ if(_askKey===msg && Date.now()-_askT<5000){ _askKey=null; return true; } _askKey=msg; _askT=Date.now(); toast(msg+" — da clic otra vez para confirmar"); return false; }
 function beep(ok){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A) return; const c=new A(), o=c.createOscillator(), g=c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value=ok?880:220; g.gain.value=.08; o.start(); o.stop(c.currentTime+(ok?.09:.28)); setTimeout(()=>c.close(),400); }catch(e){} }
 
+/* ---- utilidades de caja y envío ---- */
+function itemOfBox(o,n){ let acc=0; for(const it of o.items){ acc+=it.qty; if(n<=acc) return it; } return o.items[o.items.length-1]; }
+const telMX = t => { const d=String(t||"").replace(/\D/g,""); return d.length===10?"52"+d:d; };
+const waLink = (tel,text) => `https://wa.me/${telMX(tel)}?text=${encodeURIComponent(text)}`;
+const mailLink = (to,subj,body) => `mailto:${encodeURIComponent(to||"")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+function shareText(o){
+  const e=eta(o.dest,o.createdAt);
+  return `${CFG.brand.short} · Pedido ${o.folio}\n${o.totals.piezas} cajas ${CFG.origen} → ${dest(o.dest).name}${o.guia?`\nGuía ${o.guia}`:""}${e?`\nEntrega estimada: ${etaText(e)}`:""}\nSeguimiento: ${qrBase()}#t.${o.folio}\nGuía/pre-guía para tu almacén: ${qrBase()}#g.${o.folio}`;
+}
+
 /* ==================== Base de datos (localStorage) ==================== */
 let DB = null;
 const saveDB = () => store.set(KEY_DB, DB);
@@ -12870,9 +12938,10 @@ function createOrder(q){
   const items = q.items.map(i=>{ const w=withDims(i); return {...w, qty:Math.max(1,parseInt(i.qty,10)||1)}; });
   const cl = findOrCreateCliente(q.sol);
   const o = { folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:q.dest, items, sol:{...q.sol}, dst:{...q.dst}, serv:{...q.serv}, obs:q.obs.trim(),
-    guia:"", cancelado:false, status:"solicitado", cli:cl.id, rem:null, fac:[], pod:null, history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
+    guia:"", cancelado:false, status:"solicitado", cli:cl.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{...(q.notif||{})}, practice:false, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
   o.totals = calc(o.dest, items); o.sc = "0".repeat(o.totals.piezas);
   DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} cajas · ${money(o.totals.total)}`); saveDB();
+  const mis=store.get("alr_mis_v1")||[]; mis.unshift(o.folio); store.set("alr_mis_v1",mis.slice(0,20));
   return o;
 }
 function confirmOrder(o){
@@ -12918,7 +12987,8 @@ function doScan(code, mode, ctx){
   setBox(o,p.n,st.i);
   syncStatus(o);
   logEv("Escáner",st.t,`${o.folio} caja ${p.n}/${p.total}`); saveDB();
-  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n, stage:st};
+  const itx=itemOfBox(o,p.n);
+  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n, stage:st, dim:`Debe medir ${itx.l}×${itx.a}×${itx.h} cm · ${num(itx.kg,1)} kg`};
 }
 function viajeFaltantes(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]<2) f++; }); return f; }
 function viajeCargadas(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]===2) f++; }); return f; }
@@ -13078,13 +13148,16 @@ function seedDB(){
   fOrd(o7,"emitida",false,10);          // vence en 5 días -> vencida
   fOrd(o9,"emitida",false,3);
   const fp=fOrd(o3,"emitida",false,1); fp.pagos.push({at:now,monto:20000,forma:"03",ref:"Anticipo SPEI"});
+  [["trailer"],["trailer"],["torton"],["rabon"]].forEach((t,i)=>{ if(db.via[i]) db.via[i].tipo=t[0]; });
+  db.ord.forEach(o=>{ o.inc=[]; o.firmas={}; o.notif={}; o.pr={}; });
   db.log=[]; logEv("Sistema","Datos de ejemplo cargados","8 clientes, 10 pedidos, 4 viajes, 4 facturas");
   return db;
 }
 function loadDB(){
   DB = store.get(KEY_DB);
   if(!DB || !DB.cli || !DB.ord){ seedDB(); saveDB(); }
-  DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); });
+  DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; });
+  DB.via.forEach(v=>{ if(!v.tipo) v.tipo="torton"; });
 }
 loadDB();
 
@@ -13095,32 +13168,41 @@ function docHead(titulo, folio, qrText, extra){
     <div style="display:flex;gap:12px;align-items:center;text-align:right"><div><div style="font-size:11px;letter-spacing:1px">${esc(titulo)}</div><div style="font-size:24px;font-weight:800">${esc(folio)}</div>${extra||""}</div><div class="qr">${qrSVG(qrText)}</div></div></div>`;
 }
 function servTxt(o){ return [o.serv.recoleccion&&"Recolección en domicilio",o.serv.entrega&&"Entrega en domicilio",o.serv.seguro&&"Seguro"].filter(Boolean).join(", ")||"Ninguno"; }
-function cargaTabla(o){
+function cargaTabla(o, precio){
   const t=o.totals;
-  return `<table style="width:100%;border-collapse:collapse"><thead><tr><th>Cant.</th><th>Descripción</th><th>Medidas (cm)</th><th>kg c/u</th><th>m³</th></tr></thead><tbody>
-    ${t.lines.map(l=>`<tr><td class="c"><b>${l.qty}</b></td><td>${esc(itemName(l))}</td><td>${l.l}×${l.a}×${l.h}</td><td class="r">${num(l.kg,1)}</td><td class="r">${num(l.m3,3)}</td></tr>`).join("")}
-    <tr><td class="c"><b>${t.piezas}</b></td><td colspan="2"><b>TOTAL</b></td><td class="r"><b>${num(t.kg)} kg</b></td><td class="r"><b>${num(t.m3,3)}</b></td></tr></tbody></table>`;
+  const pr = precio ? `<th>P. unit.</th><th>Importe</th>` : "";
+  const cols = precio ? 7 : 5;
+  const totales = precio ? `
+    <table style="margin:10px 0 0 auto;width:300px;border-collapse:collapse"><tr><td>Flete</td><td class="r">${money(t.sub)}</td></tr>
+    ${t.discPct?`<tr><td>Descuento por volumen ${t.discPct}%</td><td class="r">−${money(t.disc)}</td></tr>`:""}
+    ${t.minApplied?`<tr><td>Mínimo por embarque</td><td class="r">${money(CFG.minimo)}</td></tr>`:""}
+    <tr><td>Subtotal</td><td class="r">${money(t.subtotal)}</td></tr><tr><td>IVA ${CFG.iva}%</td><td class="r">${money(t.iva)}</td></tr><tr><td><b>Total</b></td><td class="r"><b>${money(t.total)}</b></td></tr></table>
+    ${t.est?`<div style="font-size:11px;margin-top:4px">Incluye medida especial: precio estimado, sujeto a validación de ALR.</div>`:""}` : "";
+  return `<table style="width:100%;border-collapse:collapse"><thead><tr><th>Cant.</th><th>Descripción</th><th>Medidas (cm)</th><th>kg c/u</th><th>m³</th>${pr}</tr></thead><tbody>
+    ${t.lines.map(l=>`<tr><td class="c"><b>${l.qty}</b></td><td>${esc(itemName(l))}</td><td>${l.l}×${l.a}×${l.h}</td><td class="r">${num(l.kgU,1)}</td><td class="r">${num(l.m3,3)}</td>${precio?`<td class="r">${money(l.unit)}</td><td class="r">${money(l.line)}</td>`:""}</tr>`).join("")}
+    <tr><td class="c"><b>${t.piezas}</b></td><td colspan="2"><b>TOTAL</b> (${num(t.kg)} kg)</td><td class="r"><b>${num(t.kg)} kg</b></td><td class="r"><b>${num(t.m3,3)}</b></td>${precio?`<td></td><td class="r"><b>${money(t.sub)}</b></td>`:""}</tr></tbody></table>${totales}`;
 }
 function partes(o){
   return `<div class="two"><div><b>REMITENTE</b><br>${esc(o.sol.empresa||o.sol.nombre)}<br>${esc(o.sol.nombre)} · ${esc(o.sol.tel)}<br>${esc(o.sol.correo)}</div>
     <div><b>DESTINATARIO</b><br>${esc(o.dst.nombre)}<br>${esc(o.dst.dir)}<br>${esc(o.dst.tel)}</div></div>`;
 }
 function guiaDoc(o){
-  const e=eta(o.dest,o.createdAt);
-  return `<div class="doc">${docHead("GUÍA DE EMBARQUE", o.guia||"(por asignar)", `ALR-GUIA|${o.guia||o.folio}|${o.folio}`)}
+  const e=eta(o.dest,o.createdAt), f=(o.firmas||{}).remitente;
+  return `<div class="doc">${docHead(o.guia?"GUÍA DE EMBARQUE":"PRE-GUÍA · HOJA DE EMBARQUE", o.guia||o.folio, `${qrBase()}#g.${o.folio}`)}
+    ${o.guia?"":`<p class="wm">Pre-guía: queda sujeta a confirmación de ${esc(CFG.brand.short)}. Entrega esta hoja con tus cajas; el QR abre el pedido en el almacén.</p>`}
     <p style="font-size:14px"><b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)} &nbsp; <b>Ruta:</b> ${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> (${esc(dest(o.dest).transit)})${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o)}
-    <p><b>Servicios:</b> ${esc(servTxt(o))} &nbsp; <b>Cajas con etiqueta QR:</b> ${o.totals.piezas}</p>${o.obs?`<p><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
-    <div class="sig"><div>Firma remitente</div><div>Firma operador / recolección</div><div>Firma almacén</div></div></div>`;
+    ${partes(o)}${cargaTabla(o,true)}
+    <p><b>Servicios:</b> ${esc(servTxt(o))} &nbsp; <b>Cajas a etiquetar:</b> ${o.totals.piezas}</p>${o.obs?`<p><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
+    <div class="sig"><div>${firmaTag(f&&f.img,"firma remitente")}Firma remitente${f?` · ${esc(f.nombre)}`:""}</div><div>Firma operador / recolección</div><div>Firma almacén</div></div></div>`;
 }
 function remisionDoc(o){
-  const e=eta(o.dest,o.createdAt);
-  return `<div class="doc">${docHead("REMISIÓN DE ENTREGA", o.rem||"(sin remisión)", `ALR-REM|${o.rem||""}|${o.folio}`)}
+  const e=eta(o.dest,o.createdAt), p=o.pod;
+  return `<div class="doc">${docHead("REMISIÓN DE ENTREGA", o.rem||"(sin remisión)", `${qrBase()}#g.${o.folio}`)}
     <p style="font-size:14px"><b>Guía:</b> ${esc(o.guia||"—")} &nbsp; <b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)}${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o)}
+    ${partes(o)}${cargaTabla(o,true)}
     <p>Recibí de conformidad la mercancía descrita, en buen estado y completa (${o.totals.piezas} bultos).</p>
-    ${o.pod?`<p><b>Recibió:</b> ${esc(o.pod.nombre)} ${o.pod.id?`· ID: ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)}</p>`:""}
-    <div class="sig"><div>Nombre y firma de quien recibe</div><div>Fecha y hora</div><div>Operador ALR</div></div>
+    ${p?`<p><b>Recibió:</b> ${esc(p.nombre)} ${p.id?`· ID: ${esc(p.id)}`:""} · ${fdate(p.at)}${p.notas?` · ${esc(p.notas)}`:""}</p>`:""}
+    <div class="sig"><div>${firmaTag(p&&p.firma,"firma de quien recibe")}Nombre y firma de quien recibe${p?` · ${esc(p.nombre)}`:""}</div><div>${p?fdate(p.at):""}<br>Fecha y hora</div><div>Operador ${esc(CFG.brand.short)}</div></div>
     <p class="wm">Documento operativo. La factura fiscal (CFDI) se emite por separado.</p></div>`;
 }
 function manifestoDoc(v){
@@ -13147,8 +13229,8 @@ function factDoc(f){
 }
 function etiquetasHTML(o, limit){
   const n=o.sc.length, lim=Math.min(n, limit||48);
-  let h=""; for(let i=1;i<=lim;i++){
-    h+=`<div class="lab"><div class="qr">${qrSVG(boxCode(o.folio,i,n))}</div><div class="t"><b>${esc(dest(o.dest).name)}</b><div class="big">${i}<span style="font-size:14px;font-weight:700"> / ${n}</span></div><div><b>${esc(o.folio)}</b></div><div>${esc(o.dst.nombre)}</div><div>De: ${esc(o.sol.empresa||o.sol.nombre)}</div><div>Guía ${esc(o.guia||"por asignar")}</div></div></div>`;
+  let h=""; for(let i=1;i<=lim;i++){ const it=itemOfBox(o,i);
+    h+=`<div class="lab"><div class="qr">${qrSVG(boxCode(o.folio,i,n))}</div><div class="t"><b>${esc(dest(o.dest).name)}</b><div class="big">${i}<span style="font-size:14px;font-weight:700"> / ${n}</span></div><div><b>${esc(o.folio)}</b></div><div>${esc(o.dst.nombre)}</div><div>${esc(CFG.brand.short)} · ${esc(o.guia||"pre-guía")}</div>${it?`<div style="margin-top:3px"><b>${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg</b><br><span style="font-size:10px">medidas máximas declaradas</span></div>`:""}</div></div>`;
   }
   return {html:h, shown:lim, total:n};
 }
@@ -13160,7 +13242,7 @@ const S = { view:"cotizar", mod:"dash", modals:[], drawer:null, done:null, track
   fEstado:"todos", fDest:"todos", fq:"", fCliQ:"", ftab:"fac", docTab:"rem", cfgTab:"marca", repDays:30, logQ:"", vtab:"activos", cliSel:null,
   scan:{mode:"auto", via:"", ord:"", feed:[], cam:false}, scanResult:null, pendingScan:null };
 let Q = null;
-const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, obs:"" });
+const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, notif:{wa:false,mail:false}, obs:"" });
 Q = newQ();
 const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id===it.cajaId)||CFG.cajas[0]; return {...it, cajaId:c.id, l:c.l,a:c.a,h:c.h,kg:c.kg}; };
 
@@ -13229,6 +13311,8 @@ function viewCotizar(){
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">ALR la coordina; el costo de maniobras se confirma al aceptar el pedido.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="entrega" ${Q.serv.entrega?"checked":""}><span><b>Entrega en domicilio del destinatario</b><br><span class="mut sm">Costo de reparto se confirma por ALR.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">ALR te contactará con el procedimiento (factura con subtotal).</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="wa" ${Q.notif.wa?"checked":""}><span><b>Enviarme mi guía y avances por WhatsApp</b><br><span class="mut sm">Se abre WhatsApp con el mensaje listo para enviar.</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="mail" ${Q.notif.mail?"checked":""}><span><b>Enviarme mi guía y avances por correo</b><br><span class="mut sm">Se abre tu correo con el mensaje listo.</span></span></label>
         </div>
       </div>
       <div class="card">
@@ -13252,7 +13336,7 @@ function viewCotizar(){
       </div>
     </div>
     <aside class="sticky"><div class="card sum" id="q-sum"></div></aside>
-  </div></div>`;
+  </div></div><div class="qbar" id="q-bar"></div>`;
 }
 function metaHTML(it){
   const p = pieceCalc(withDims(it), Q.dest), w = withDims(it);
@@ -13316,26 +13400,32 @@ function renderSummary(){
     <button class="btn" data-act="qsend" style="width:100%;margin-top:16px;padding:14px" ${c.total>0&&v.ok?"":"disabled"}>Confirmar pedido</button>
     <div class="mut sm" style="margin-top:8px;text-align:center">${esc(v.msg)||"Sin pago en línea. ALR confirma tu pedido y te asigna guía."}</div>
     <div class="mut sm" style="margin-top:10px;text-align:center">Tarifa vigente ${esc(CFG.vigencia)}</div>`;
+  const qb=$("#q-bar"); if(qb) qb.innerHTML=`<div><span class="xs mut">Total con IVA</span><b class="mono">${money(c.total)}</b></div><button class="btn" data-act="qgo">${c.total>0&&v.ok?"Confirmar pedido":"Completar datos"}</button>`;
 }
 function renderOcurre(){ const d=dest(Q.dest); $("#q-ocurre").innerHTML = d.ocurre?`<div class="note" style="margin-top:12px">Este destino se atiende <b>solo ocurre</b>: el destinatario recoge en la terminal de ALR.</div>`:""; }
 
 function viewDone(){
   const o = ordOf(S.done); if(!o){ S.done=null; return viewCotizar(); }
-  return `<div class="wrap" style="padding-top:30px;max-width:720px">
+  const txt=shareText(o), wa=waLink(o.sol.tel,txt), ml=mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,txt);
+  return `<div class="wrap" style="padding-top:24px;max-width:760px">
     <div class="card" style="text-align:center">
       <div class="ok-big">✓</div>
       <h1 style="font-size:26px">¡Pedido recibido!</h1>
-      <p class="mut">ALR lo revisará y te confirmará con tu guía de envío.</p>
+      <p class="mut">ALR lo revisará y confirmará. Ya puedes bajar tu guía y tus etiquetas.</p>
       <div style="margin:18px 0;padding:16px;background:var(--bg);border-radius:12px">
         <div class="mut sm">Tu folio</div><div style="font-size:30px;font-weight:800;color:var(--c1);letter-spacing:1px">${esc(o.folio)}</div>
         <div class="mut sm">Total ${money(o.totals.total)} · ${esc(CFG.origen)} → ${esc(dest(o.dest).name)} · ${o.totals.piezas} cajas</div>
       </div>
       ${etaBox(o.dest,o.createdAt)}
-      <div class="note info sm" style="margin:16px 0;text-align:left"><b>Siguiente paso:</b> imprime una etiqueta QR por cada caja y pégala en un lugar visible. ALR las escanea al recibir, cargar y entregar, y tú ves en cuál punto va cada una.</div>
-      <div class="chips" style="justify-content:center">
-        <button class="btn" data-act="labels" data-arg="${esc(o.folio)}">Imprimir etiquetas QR (${o.totals.piezas})</button>
+      <div style="text-align:left;margin-top:18px"><div class="tag" style="margin-bottom:8px">Qué sigue</div>
+        <div class="pstep now"><span class="pn">1</span><div style="flex:1"><b>Descarga tu pre-guía</b><div class="sm mut">Es la hoja con el detalle y el precio. Llévala o mándala a tu almacén.</div></div><button class="btn sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Ver / guardar PDF</button></div>
+        <div class="pstep"><span class="pn">2</span><div style="flex:1"><b>Descarga y pega las etiquetas QR</b><div class="sm mut">Una por caja, con las medidas máximas declaradas.</div></div><button class="btn sm" data-act="labels" data-arg="${esc(o.folio)}">Ver etiquetas</button></div>
+        <div class="pstep"><span class="pn">3</span><div style="flex:1"><b>Entrega tus cajas en el almacén</b><div class="sm mut">Al llegar, ALR cuenta las cajas y tú ves el avance en tu seguimiento.</div></div></div></div>
+      <div class="chips" style="justify-content:center;margin-top:16px">
+        <button class="btn dark" data-act="labzip" data-arg="${esc(o.folio)}">Descargar etiquetas (imágenes)</button>
+        <a class="btn ${o.notif&&o.notif.wa?"":"sec"}" href="${esc(wa)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+        <a class="btn ${o.notif&&o.notif.mail?"":"sec"}" href="${esc(ml)}" target="_blank" rel="noopener">Enviar por correo</a>
         <button class="btn sec" data-act="track" data-arg="${esc(o.folio)}">Ver seguimiento</button>
-        <button class="btn sec" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar resumen</button>
         <button class="btn sec" data-act="newquote">Nueva cotización</button>
       </div>
       <p class="mut sm" style="margin-top:16px">Guarda tu folio: con él consultas el estado de tu envío cuando quieras.</p>
@@ -13371,6 +13461,7 @@ function viewRastreo(){
   <div class="wrap pull" style="max-width:760px">
     <div class="card">
       <form data-form="track" style="display:flex;gap:10px"><label for="t-in" style="display:none">Folio o guía</label><input id="t-in" placeholder="Ej. ALR-2026-0003 o ALR-G-48202" value="${esc(S.track)}" style="flex:1"><button class="btn">Buscar</button></form>
+      ${(()=>{ const mis=(store.get("alr_mis_v1")||[]).filter(f=>ordOf(f)).slice(0,6); return mis.length?`<div class="sm" style="margin-top:10px"><b>Tus pedidos en este dispositivo:</b> ${mis.map(f=>`<a href="#rastreo" data-act="track" data-arg="${esc(f)}" style="color:var(--c1);font-weight:700">${esc(f)}</a>`).join(" · ")}</div>`:""; })()}
       <div class="mut sm" style="margin-top:8px">Prueba con: ${DB.ord.filter(x=>x.rem).slice(0,3).map(x=>`<a href="#rastreo" data-act="track" data-arg="${esc(x.folio)}" style="color:var(--c1)">${esc(x.folio)}</a>`).join(" · ")}</div>
     </div>
     ${S.track&&!o?`<div class="card"><b>No encontramos ese folio.</b><div class="mut sm">Verifica que esté completo (ej. ALR-2026-0001).</div></div>`:""}
@@ -13394,7 +13485,7 @@ function viewEtiquetas(){
     <div class="card noprint" style="margin-bottom:16px">
       <div class="h2">Etiquetas QR · ${esc(o.folio)}</div>
       <p class="mut" style="margin:0 0 12px">Una etiqueta por caja (${L.total}). Imprímelas y pégalas en un lugar plano y visible. ALR las escanea con el teléfono al recibir, cargar y entregar.</p>
-      <div class="chips">${SANDBOX?"":`<button class="btn" data-act="printlabels">Imprimir etiquetas</button>`}<button class="btn sec" data-act="${S.back==="sistema"?"back":"track"}" data-arg="${esc(o.folio)}">← Volver</button>
+      <div class="chips">${SANDBOX?"":`<button class="btn" data-act="printlabels">Imprimir etiquetas</button>`}<button class="btn dark" data-act="labzip" data-arg="${esc(o.folio)}">Descargar etiquetas (imágenes)</button><button class="btn sec" data-act="${S.back==="sistema"?"back":"track"}" data-arg="${esc(o.folio)}">← Volver</button>
       ${L.shown<L.total?`<button class="btn sec" data-act="labmore">Mostrar más (${L.shown} de ${L.total})</button>`:""}</div>
       ${SANDBOX?`<div class="note info sm" style="margin-top:12px">Para imprimir, abre el sistema en su dirección web (esta vista previa no permite imprimir).</div>`:""}
     </div>
@@ -13418,15 +13509,15 @@ function viewSistema(){
       <label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
       <button class="btn" style="width:100%;margin-top:12px">Entrar</button>
     </form>
-    ${S.pendingScan?`<div class="note info sm" style="margin-top:12px">Inicia sesión para registrar la caja que escaneaste.</div>`:""}
+    ${S.pendingScan||S.pendingGuia?`<div class="note info sm" style="margin-top:12px">Inicia sesión para abrir lo que escaneaste.</div>`:""}
     <div class="mut sm" style="margin-top:12px">Demo: PIN <b>${esc(CFG.pin)}</b>. Cada perfil ve solo los módulos que le corresponden.</div></div></div>`;
   if(!allowed(S.mod)) S.mod = ROLES[ROLE].mods[0];
   const porConf = DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
   const venc = DB.fac.filter(f=>facEstado(f)==="vencida").length;
   const nb = {pedidos:porConf, fact:venc};
   const nav = ROLES[ROLE].mods.map(m=>`<button class="nv ${S.mod===m?"on":""}" data-act="mod" data-arg="${m}"><span>${MODS[m].ic}</span>${MODS[m].t}${nb[m]?`<span class="n">${nb[m]}</span>`:""}</button>`).join("");
-  const body = {dash:modDash,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
-  return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}</aside><div class="main">${body}</div></div>`;
+  const body = {dash:modDash,oper:modOper,practica:modPractica,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
+  return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}<button class="nv" data-act="logout"><span>⎋</span>Salir</button></aside><div class="main">${body}</div></div>`;
 }
 /* ---- resumen de envío (se reutiliza en facturas, guías, remisiones y escáner) ---- */
 function envioLinea(o){
@@ -13462,6 +13553,7 @@ function modDash(){
   act.filter(atrasado).forEach(o=>alerts.push({k:"bad",t:`${o.folio} con retraso`,s:`Debió llegar ${etaText(eta(o.dest,o.createdAt))} · ${stLabel(o.status)}`,a:"open",arg:o.folio}));
   DB.fac.filter(f=>facEstado(f)==="vencida").forEach(f=>alerts.push({k:"bad",t:`Factura ${f.id} vencida`,s:`${cliOf(f.cli).razon} · saldo ${money(facSaldo(f))}`,a:"modgo",arg:"fact"}));
   DB.via.filter(v=>v.status==="cargando").forEach(v=>alerts.push({k:"warn",t:`${v.id} cargando (${v.unidad})`,s:`Faltan ${viajeFaltantes(v)} cajas por subir · destino ${dest(v.dest).name}`,a:"modgo",arg:"viajes"}));
+  act.filter(o=>(o.inc||[]).some(x=>x.tipo==="medidas")).forEach(o=>alerts.push({k:"bad",t:`${o.folio} con medidas fuera de lo declarado`,s:"Revisar ajuste de tarifa",a:"open",arg:o.folio}));
   act.filter(o=>o.totals.est&&o.status==="solicitado").forEach(o=>alerts.push({k:"warn",t:`${o.folio} con medida especial`,s:"Validar precio antes de confirmar",a:"open",arg:o.folio}));
   DB.cli.filter(c=>c.pendiente).forEach(c=>alerts.push({k:"warn",t:`Cliente ${c.razon} sin datos fiscales`,s:"Completar RFC y régimen para facturar",a:"modgo",arg:"clientes"}));
   const porEtapa = CFG.steps.map(s=>({t:s.t,n:act.filter(o=>o.status===s.k).length}));
@@ -13508,7 +13600,7 @@ function modPedidos(){
       <span class="mut sm" style="margin-left:auto">${list.length} pedido(s)</span>
       <button class="btn sec sm" data-act="exportorders">Exportar</button>
     </div>
-    <div class="scroll"><table>
+    <div class="scroll"><table class="rt">
       <thead><tr><th>Folio</th><th>Fecha</th><th>Cliente</th><th>Destino</th><th>Entrega est.</th><th class="r">Cajas</th><th class="r">m³</th><th class="r">Total</th><th>Escaneo</th><th>Estatus</th></tr></thead>
       <tbody>${list.map(o=>{ const c=stageCounts(o), e=eta(o.dest,o.createdAt), n=o.sc.length, rec=n-c[0];
         return `<tr class="click" data-act="open" data-arg="${esc(o.folio)}">
@@ -13535,7 +13627,7 @@ function drawerHTML(o){
   return `<div class="drawer-bg" data-act="drawerbg"><div class="drawer">
     <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn sec sm" data-act="closedrawer">← Volver</button>
-      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">WhatsApp</button></div>
+      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><a class="btn sec sm" href="${esc(waLink(o.sol.tel,shareText(o)))}" target="_blank" rel="noopener">Enviar WhatsApp</a><a class="btn sec sm" href="${esc(mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,shareText(o)))}" target="_blank" rel="noopener">Enviar correo</a><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar</button></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -13547,6 +13639,7 @@ function drawerHTML(o){
       ${atrasado(o)?`<div class="note bad sm" style="margin-top:12px">Este pedido va con retraso respecto a la fecha estimada.</div>`:""}
     </div>
     ${o.status==="solicitado"&&!o.cancelado?`<div class="card noprint" style="border:2px solid var(--c1)"><div class="h2">Confirmar pedido</div><p class="mut sm" style="margin:0 0 12px">Al confirmar se asigna número de guía y se genera la remisión. El cliente lo ve de inmediato en su seguimiento.</p><button class="btn" data-act="confirmord" data-arg="${esc(o.folio)}">Confirmar y generar guía + remisión</button></div>`:""}
+    ${(o.inc||[]).length?`<div class="card" style="border:2px solid #e0a21b"><div class="h2">Incidencias <span class="pill warn">${o.inc.length}</span></div>${o.inc.map(x=>`<div class="sm" style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(x.tipo==="medidas"?"Medidas":x.tipo==="conteo"?"Conteo":"Nota")}</b> · ${esc(x.detalle)}${x.extra>0?` · ajuste estimado <b>${money(x.extra)}</b>`:""}<div class="xs mut">${fdate(x.at)} · ${esc(x.por)}</div></div>`).join("")}</div>`:""}
     <div class="card"><div class="h2">Cajas escaneadas <span class="pill ${n-c[0]===n?"ok":"warn"}">${n-c[0]} de ${n} recibidas</span></div>
       ${boxProgress(o,false)}
       ${stIdx(o)>=1&&falt?`<div class="note sm" style="margin-top:10px"><b>Faltan por recibir en almacén:</b> cajas ${esc(falt)}</div>`:""}
@@ -13557,15 +13650,13 @@ function drawerHTML(o){
     ${o.cancelado?"":`<div class="card noprint"><div class="h2">Control del envío</div>
       ${next&&i>=1?`<div class="row2"><div><label for="d-note">Nota del checkpoint</label><input id="d-note" placeholder="Unidad, operador, ubicación, incidencia…"></div><div style="align-self:end"><button class="btn" data-act="advance" data-arg="${esc(o.folio)}">Marcar: ${esc(next.t)} →</button></div></div>`:""}
       ${i<1?`<div class="mut sm">Confirma el pedido para habilitar el seguimiento.</div>`:""}
-      ${o.status!=="entregado"&&i>=1?`<div class="h2" style="margin-top:18px">Registrar entrega con firma</div>
-        <div class="row3"><div><label for="p-n">Quién recibe</label><input id="p-n" placeholder="Nombre"></div><div><label for="p-i">Identificación</label><input id="p-i" placeholder="INE / folio"></div><div><label for="p-o">Notas</label><input id="p-o" placeholder="Opcional"></div></div>
-        <button class="btn ok sm" style="margin-top:10px" data-act="entrega" data-arg="${esc(o.folio)}">Registrar entrega completa</button>`:""}
-      ${o.pod?`<div class="note ok sm" style="margin-top:12px"><b>Entrega:</b> ${esc(o.pod.nombre)} ${o.pod.id?`· ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)} ${o.pod.notas?`· ${esc(o.pod.notas)}`:""}</div>`:""}
+      ${o.status!=="entregado"&&i>=1?`<div class="h2" style="margin-top:18px">Operación del pedido</div><div class="chips">${siguientePaso(o)?`<button class="btn" data-act="accion" data-arg="${esc(o.folio)}|${siguientePaso(o).k}">${esc(siguientePaso(o).t)}</button>`:""}<button class="btn sec" data-act="sign" data-arg="${esc(o.folio)}|remitente">Firma del remitente</button><button class="btn ok" data-act="accion" data-arg="${esc(o.folio)}|entregar">Entregar y firmar</button></div>`:""}
+      ${o.pod?`<div class="note ok sm" style="margin-top:12px"><b>Entrega:</b> ${esc(o.pod.nombre)} ${o.pod.id?`· ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)} ${o.pod.notas?`· ${esc(o.pod.notas)}`:""}${o.pod.firma?`<div style="margin-top:6px"><img src="${o.pod.firma}" alt="firma" style="max-height:70px;background:#fff;border-radius:8px;border:1px solid var(--line)"></div>`:""}</div>`:""}
       ${o.status!=="entregado"?`<div style="margin-top:14px"><button class="btn ghost sm" style="color:var(--bad)" data-act="cancelord" data-arg="${esc(o.folio)}">Cancelar pedido</button></div>`:""}
     </div>`}
     <div class="card"><div class="h2">Carga y tarifa</div>
       <div class="scroll"><table><thead><tr><th>Pieza</th><th class="r">Cant</th><th>Medidas</th><th class="r">kg c/u</th><th class="r">m³</th><th class="r">Importe</th></tr></thead>
-      <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kg,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
+      <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kgU,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
       <div class="row3" style="margin-top:14px">
         ${[["Cajas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Subtotal",money(t.subtotal)],["IVA",money(t.iva)],["Total",money(t.total)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
       </div>
@@ -13598,7 +13689,7 @@ function scanOrders(){ return DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1&&o.stat
 function scanFeedHTML(){
   const f=S.scan.feed;
   if(!f.length) return `<div class="mut sm">Aún no hay escaneos. Escanea una etiqueta, escribe el código o usa "Simular siguiente caja".</div>`;
-  return f.slice(0,14).map(r=>`<div class="it ${r.kind}" ${r.o?`data-act="open" data-arg="${esc(r.o.folio)}" style="cursor:pointer" title="Ver envío completo"`:""}><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.75">${fdate(r.at)}${r.o?` · toca para ver el envío`:""}</div></div></div>`).join("");
+  return f.slice(0,14).map(r=>`<div class="it ${r.kind}" ${r.o?`data-act="open" data-arg="${esc(r.o.folio)}" style="cursor:pointer" title="Ver envío completo"`:""}><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.85">${r.dim?`<b>${esc(r.dim)}</b> · `:""}${fdate(r.at)}${r.o?` · toca para ver el envío`:""}</div></div></div>`).join("");
 }
 function scanReconHTML(){
   const auto = S.scan.mode==="auto";
@@ -13619,12 +13710,14 @@ function scanReconHTML(){
 }
 function refreshScan(){ const a=$("#scan-feed"); if(a) a.innerHTML=scanFeedHTML(); const b=$("#scan-recon"); if(b) b.innerHTML=scanReconHTML(); }
 function submitScan(code){
+  const g=String(code).match(/#g\.([A-Za-z0-9-]+)\s*$/); if(g){ beep(true); guiaPendiente(g[1]); return; }
   const res = doScan(code, S.scan.mode, {via:S.scan.via});
   S.scan.feed.unshift({...res, at:Date.now()}); if(S.scan.feed.length>40) S.scan.feed.pop();
   if(res.o && res.kind!=="bad" && !S.scan.ord) S.scan.ord=res.o.folio;
   if(res.o && res.ok) S.scan.ord=res.o.folio;
   S.scanResult=null; const rc=$("#scan-result"); if(rc) rc.remove();
   beep(res.ok); refreshScan();
+  if(S.mod!=="scan") toast(res.msg+(res.dim?` · ${res.dim}`:""), res.ok?"":"bad");
   const sel=$("#sc-ord"); if(sel && S.scan.ord) sel.value=S.scan.ord;
 }
 function nextSimStage(o, mode){
@@ -13667,7 +13760,7 @@ function scanResultCard(r){
   const o=r.o, n=o?o.sc.length:0, c=o?stageCounts(o):null;
   return `<div class="card" id="scan-result" style="margin-bottom:16px;border:3px solid ${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">
     <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="ok-big" style="margin:0;background:${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">${r.ok?"✓":r.kind==="warn"?"!":"✕"}</div>
-    <div style="flex:1;min-width:220px"><div style="font-size:20px;font-weight:800">${esc(r.msg)}</div>${o?`<div class="mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>`:""}</div></div>
+    <div style="flex:1;min-width:220px"><div style="font-size:20px;font-weight:800">${esc(r.msg)}</div>${r.dim?`<div style="margin-top:4px"><b>${esc(r.dim)}</b> <span class="mut sm">(mídela: no debe excederse)</span></div>`:""}${o?`<div class="mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>`:""}</div></div>
     ${o?`<div style="margin-top:14px">${boxProgress(o,true)}</div><div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`:`<div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button></div>`}</div>`;
 }
 function modScan(){
@@ -13710,7 +13803,8 @@ function modViajes(){
       <div><label for="nv-u">Unidad</label><input id="nv-u" placeholder="Unidad 214"></div>
       <div><label for="nv-p">Placas</label><input id="nv-p" placeholder="NL-48-221"></div>
       <div><label for="nv-o">Operador</label><input id="nv-o" placeholder="Nombre"></div>
-      <div><label for="nv-d">Destino</label><select id="nv-d">${CFG.destinos.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select></div></div>
+      <div><label for="nv-d">Destino</label><select id="nv-d">${CFG.destinos.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("")}</select></div>
+      <div><label for="nv-t">Tipo de unidad</label><select id="nv-t">${Object.entries(CFG.camiones).map(([k,t])=>`<option value="${k}">${esc(t.t)} · ${t.m3} m³ · ${num(t.kg,0)} kg</option>`).join("")}</select></div></div>
       <button class="btn sm" style="margin-top:12px">Crear viaje</button></form></div>
   <div class="subtabs"><button class="${S.vtab==="activos"?"on":""}" data-act="vtab" data-arg="activos">Activos</button><button class="${S.vtab==="cerrados"?"on":""}" data-act="vtab" data-arg="cerrados">Cerrados</button></div>
   <div class="grid g2">${lista.map(viajeCard).join("")||`<div class="card mut">No hay viajes en esta lista.</div>`}</div>`;
@@ -13719,8 +13813,8 @@ function viajeCard(v){
   const f=viajeFaltantes(v), cg=viajeCargadas(v), tot=viajeBoxes(v);
   const stc = {abierto:"",cargando:"warn",en_ruta:"red",llegado:"ok",cerrado:"dark"}[v.status];
   const elig = DB.ord.filter(o=>!o.cancelado&&o.dest===v.dest&&stIdx(o)>=1&&o.status!=="entregado"&&!v.ords.includes(o.folio)&&(!o.viaje||["cerrado","llegado"].includes((viaOf(o.viaje)||{}).status)));
-  return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><h3>${esc(v.id)} · ${esc(v.unidad)}</h3><div class="sm mut">${esc(v.placas)} · ${esc(v.operador)} → <b>${esc(dest(v.dest).name)}</b></div></div><span class="pill ${stc}">${esc(VIA_ST[v.status])}</span></div>
-    <div class="row3" style="margin:12px 0"><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cajas asignadas</div><b class="mono">${tot}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cargadas</div><b class="mono">${tot-f}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Faltan</div><b class="mono" style="color:${f?"var(--bad)":"var(--ok)"}">${f}</b></div></div>
+  return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><h3>${esc(v.id)} · ${esc(v.unidad)} <span class="pill">${esc(viajeCap(v).t)}</span></h3><div class="sm mut">${esc(v.placas)} · ${esc(v.operador)} → <b>${esc(dest(v.dest).name)}</b></div></div><span class="pill ${stc}">${esc(VIA_ST[v.status])}</span></div>
+    <div style="margin:12px 0 4px">${viajeOccHTML(v)}</div><div class="row3" style="margin:12px 0"><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cajas asignadas</div><b class="mono">${tot}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Cargadas</div><b class="mono">${tot-f}</b></div><div style="background:var(--soft);padding:8px;border-radius:10px"><div class="xs mut">Faltan</div><b class="mono" style="color:${f?"var(--bad)":"var(--ok)"}">${f}</b></div></div>
     ${v.ords.map(fo=>{ const o=ordOf(fo); if(!o) return ""; const c=stageCounts(o), cgo=c[2]+c[3]+c[4]+c[5]; return `<div class="sm" style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid var(--line);cursor:pointer" data-act="open" data-arg="${esc(o.folio)}"><span><b>${esc(o.folio)}</b> · ${esc(o.sol.empresa||o.sol.nombre)}</span><span class="mono">${cgo}/${o.sc.length}</span></div>`; }).join("")||`<div class="mut sm">Sin pedidos asignados.</div>`}
     <div class="chips noprint" style="margin-top:12px">
       ${["abierto","cargando"].includes(v.status)?`<button class="btn sm" data-act="viacargar" data-arg="${v.id}">Escanear carga</button><button class="btn dark sm" data-act="viasalida" data-arg="${v.id}">Registrar salida</button>`:""}
@@ -13742,7 +13836,8 @@ function modAlmacen(){
   const totA=by(1).reduce((s,x)=>s+x.n,0), m3A=by(1).reduce((s,x)=>s+x.m3,0), totP=by(0).reduce((s,x)=>s+x.n,0), totC=by(2).reduce((s,x)=>s+x.n,0);
   return `${ptitle("Almacén")}
   <div class="kpis"><div class="kpi w"><small>Por recibir</small><b>${totP}</b><span>cajas confirmadas sin escanear</span></div><div class="kpi b"><small>En almacén</small><b>${totA}</b><span>${num(m3A,1)} m³ ocupados</span></div><div class="kpi"><small>Cargadas en unidad</small><b>${totC}</b><span>esperando salida</span></div></div>
-  <div class="grid g3">${blk("Por recibir","confirmadas, aún sin llegar",by(0),"recibida")}${blk("En almacén","recibidas y escaneadas",by(1),"cargada")}${blk("Cargadas en unidad","listas para salir",by(2),"")}</div>`;
+  <div class="grid g3">${blk("Por recibir","confirmadas, aún sin llegar",by(0),"recibida")}${blk("En almacén","recibidas y escaneadas",by(1),"cargada")}${blk("Cargadas en unidad","listas para salir",by(2),"")}</div>
+  <h3 style="margin:24px 0 10px">Unidades de hoy</h3>${unidadesHoyHTML()}`;
 }
 
 /* ==================== Clientes ==================== */
@@ -13758,7 +13853,7 @@ function modClientes(){
   const list=DB.cli.filter(c=>!q||(c.razon+c.rfc+c.nombre+c.correo+c.id).toLowerCase().includes(q));
   return `${ptitle("Clientes",`<button class="btn sm" data-act="newcli">+ Nuevo cliente</button>`)}
   <div class="card" style="padding:16px"><div class="toolbar"><label for="cq" style="display:none">Buscar</label><input id="cq" data-in="fcliq" placeholder="Buscar razón social, RFC, contacto…" value="${esc(S.fCliQ)}"><span class="mut sm" style="margin-left:auto">${list.length} cliente(s)</span></div>
-  <div class="scroll"><table><thead><tr><th>Clave</th><th>Razón social</th><th>RFC</th><th>Contacto</th><th class="r">Crédito</th><th class="r">Pedidos</th><th class="r">Facturado</th><th class="r">Saldo</th></tr></thead><tbody>
+  <div class="scroll"><table class="rt"><thead><tr><th>Clave</th><th>Razón social</th><th>RFC</th><th>Contacto</th><th class="r">Crédito</th><th class="r">Pedidos</th><th class="r">Facturado</th><th class="r">Saldo</th></tr></thead><tbody>
   ${list.map(c=>{ const s=cliStats(c); return `<tr class="click" data-act="vercli" data-arg="${esc(c.id)}"><td><b>${esc(c.id)}</b></td><td>${esc(c.razon)}${c.pendiente?` <span class="pill warn">datos fiscales</span>`:""}</td><td class="mono sm">${esc(c.rfc||"—")}</td><td class="sm">${esc(c.nombre)}<div class="mut">${esc(c.correo)}</div></td><td class="r">${c.credito?c.credito+" días":"Contado"}</td><td class="r mono">${s.pedidos}</td><td class="r mono">${money0(s.facturado)}</td><td class="r mono">${s.saldo>0.5?`<b style="color:var(--bad)">${money0(s.saldo)}</b>`:"—"}</td></tr>`; }).join("")}
   </tbody></table></div></div>`;
 }
@@ -13794,7 +13889,7 @@ function modFact(){
     <div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.ftab===k?"on":""}" data-act="ftab" data-arg="${k}">${t}</button>`).join("")}</div>`;
   if(S.ftab==="pend"){
     const p=pendientesFacturar();
-    return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Guía</th><th>Estado del envío</th><th class="r">Total</th><th></th></tr></thead><tbody>
+    return head+`<div class="card" style="padding:16px"><div class="scroll"><table class="rt"><thead><tr><th>Pedido</th><th>Cliente</th><th>Guía</th><th>Estado del envío</th><th class="r">Total</th><th></th></tr></thead><tbody>
     ${p.map(o=>`<tr><td><b>${esc(o.folio)}</b></td><td>${esc(cliOf(o.cli).razon)}</td><td class="sm">${esc(o.guia)}</td><td class="sm">${badge(o)}<div class="mut" style="margin-top:3px">${esc(envioLinea(o))}</div></td><td class="r mono">${money(o.totals.total)}</td><td class="r"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Envío</button> <button class="btn sm" data-act="facturar" data-arg="${esc(o.folio)}">Facturar</button></td></tr>`).join("")||`<tr><td colspan="6" class="mut c" style="padding:24px">No hay pedidos pendientes de facturar.</td></tr>`}</tbody></table></div></div>`;
   }
   if(S.ftab==="cob"){
@@ -13804,12 +13899,12 @@ function modFact(){
     const lbl=["Corriente","Vencido 1–15 días","Vencido 16–30 días","Vencido +30 días"];
     const por={}; abiertas.forEach(f=>{ (por[f.cli]=por[f.cli]||[0,0,0,0])[bucket(f)]+=facSaldo(f); });
     return head+`<div class="kpis">${tot.map((v,i)=>`<div class="kpi ${i===0?"g":i===1?"w":""}"><small>${lbl[i]}</small><b>${money0(v)}</b></div>`).join("")}</div>
-    <div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>Cliente</th>${lbl.map(l=>`<th class="r">${l}</th>`).join("")}<th class="r">Total</th></tr></thead><tbody>
+    <div class="card" style="padding:16px"><div class="scroll"><table class="rt"><thead><tr><th>Cliente</th>${lbl.map(l=>`<th class="r">${l}</th>`).join("")}<th class="r">Total</th></tr></thead><tbody>
     ${Object.entries(por).map(([id,v])=>`<tr><td>${esc(cliOf(id).razon)}</td>${v.map(x=>`<td class="r mono">${x?money0(x):"—"}</td>`).join("")}<td class="r mono"><b>${money0(v.reduce((a,b)=>a+b,0))}</b></td></tr>`).join("")||`<tr><td colspan="6" class="mut c" style="padding:24px">Sin saldos por cobrar.</td></tr>`}</tbody></table></div></div>`;
   }
   const fl=DB.fac;
   return head+`<div class="card" style="padding:16px"><div class="toolbar"><span class="mut sm">${fl.length} factura(s)</span><button class="btn sec sm" style="margin-left:auto" data-act="xmlall">Descargar todos los XML (.zip)</button></div>
-  <div class="scroll"><table><thead><tr><th>Factura</th><th>Pedido</th><th>Cliente</th><th>Estado del envío</th><th class="r">Total</th><th class="r">Saldo</th><th>Cobro</th><th></th></tr></thead><tbody>
+  <div class="scroll"><table class="rt"><thead><tr><th>Factura</th><th>Pedido</th><th>Cliente</th><th>Estado del envío</th><th class="r">Total</th><th class="r">Saldo</th><th>Cobro</th><th></th></tr></thead><tbody>
   ${fl.map(f=>{ const st=facEstado(f), os=f.ords.map(ordOf).filter(Boolean), o=os[0]; return `<tr class="click" data-act="verfac" data-arg="${esc(f.id)}"><td><b>${esc(f.id)}</b><div class="xs mut">${fday(f.fecha)}</div></td><td>${o?`<b>${esc(o.folio)}</b>${os.length>1?` <span class="pill">+${os.length-1}</span>`:""}<div style="margin-top:3px">${badge(o)}</div>`:"—"}</td><td>${esc(cliOf(f.cli).razon)}</td><td class="sm">${o?esc(envioLinea(o)):"—"}</td><td class="r mono">${money(f.total)}</td><td class="r mono">${st==="pagada"||st==="cancelada"?"—":money(facSaldo(f))}</td><td><span class="pill ${st==="pagada"?"ok":st==="vencida"?"bad":st==="borrador"?"":"warn"}">${esc(FAC_ST[st])}</span>${f.estado==="borrador"||st==="pagada"||st==="cancelada"?"":`<div class="xs mut" style="margin-top:3px">vence ${fday(f.venc)}</div>`}</td><td class="r"><div class="chips" style="justify-content:flex-end"><button class="btn sec sm" data-act="verfac" data-arg="${esc(f.id)}">Factura</button> <button class="btn sec sm" data-act="xmlfac" data-arg="${esc(f.id)}">XML</button>${o?`<button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Envío</button>`:""}</div></td></tr>`; }).join("")||`<tr><td colspan="8" class="mut c" style="padding:24px">Aún no hay facturas.</td></tr>`}</tbody></table></div></div>`;
 }
 function openFac(id){
@@ -13835,15 +13930,15 @@ function xmlZip(list, name){
 function modDocs(){
   const tabs=[["rem","Remisiones"],["guia","Guías"],["mani","Manifiestos de carga"]];
   const head=`${ptitle("Guías y remisiones")}<div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.docTab===k?"on":""}" data-act="dtab" data-arg="${k}">${t}</button>`).join("")}</div>`;
-  if(S.docTab==="mani") return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>Viaje</th><th>Unidad</th><th>Operador</th><th>Destino</th><th class="r">Pedidos</th><th>Estado</th><th></th></tr></thead><tbody>${DB.via.map(v=>`<tr><td><b>${esc(v.id)}</b></td><td>${esc(v.unidad)}</td><td>${esc(v.operador)}</td><td>${esc(dest(v.dest).name)}</td><td class="r">${v.ords.length}</td><td>${esc(VIA_ST[v.status])}</td><td class="r"><button class="btn sec sm" data-act="doc" data-arg="mani|${v.id}">Abrir</button></td></tr>`).join("")}</tbody></table></div></div>`;
+  if(S.docTab==="mani") return head+`<div class="card" style="padding:16px"><div class="scroll"><table class="rt"><thead><tr><th>Viaje</th><th>Unidad</th><th>Operador</th><th>Destino</th><th class="r">Pedidos</th><th>Estado</th><th></th></tr></thead><tbody>${DB.via.map(v=>`<tr><td><b>${esc(v.id)}</b></td><td>${esc(v.unidad)}</td><td>${esc(v.operador)}</td><td>${esc(dest(v.dest).name)}</td><td class="r">${v.ords.length}</td><td>${esc(VIA_ST[v.status])}</td><td class="r"><button class="btn sec sm" data-act="doc" data-arg="mani|${v.id}">Abrir</button></td></tr>`).join("")}</tbody></table></div></div>`;
   const os=DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1);
-  return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>${S.docTab==="rem"?"Remisión":"Guía"}</th><th>Pedido</th><th>Cliente</th><th>Destinatario</th><th>Estado del envío</th><th>Firma</th><th></th></tr></thead><tbody>
-  ${os.map(o=>`<tr><td><b>${esc(S.docTab==="rem"?o.rem:o.guia)}</b></td><td>${esc(o.folio)}</td><td>${esc(o.sol.empresa||o.sol.nombre)}</td><td>${esc(o.dst.nombre)}</td><td class="sm">${badge(o)}<div class="mut" style="margin-top:3px">${esc(envioLinea(o))}</div></td><td>${o.pod?`<span class="pill ok">Firmada · ${esc(o.pod.nombre)}</span>`:`<span class="pill warn">Pendiente</span>`}</td>
+  return head+`<div class="card" style="padding:16px"><div class="scroll"><table class="rt"><thead><tr><th>${S.docTab==="rem"?"Remisión":"Guía"}</th><th>Pedido</th><th>Cliente</th><th>Destinatario</th><th>Estado del envío</th><th>Firma</th><th></th></tr></thead><tbody>
+  ${os.map(o=>`<tr><td><b>${esc(S.docTab==="rem"?o.rem:o.guia)}</b></td><td>${esc(o.folio)}</td><td>${esc(o.sol.empresa||o.sol.nombre)}</td><td>${esc(o.dst.nombre)}</td><td class="sm">${badge(o)}<div class="mut" style="margin-top:3px">${esc(envioLinea(o))}</div></td><td>${o.pod&&o.pod.firma?`<span class="pill ok">Firmada · ${esc(o.pod.nombre)}</span>`:o.pod?`<span class="pill warn">Entregada sin firma</span>`:`<span class="pill warn">Pendiente</span>`}</td>
   <td class="r" style="white-space:nowrap"><button class="btn sec sm" data-act="doc" data-arg="${S.docTab}|${esc(o.folio)}">Documento</button> <button class="btn sm" data-act="open" data-arg="${esc(o.folio)}">Envío</button> <button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">QR</button></td></tr>`).join("")||`<tr><td colspan="7" class="mut c" style="padding:24px">Sin documentos todavía. Confirma un pedido para generarlos.</td></tr>`}</tbody></table></div></div>`;
 }
 
 /* ==================== Reportes ==================== */
-function repOrders(){ const lim = S.repDays==="0" ? 0 : Date.now()-(+S.repDays)*DAY; return DB.ord.filter(o=>!o.cancelado && o.createdAt>=lim); }
+function repOrders(){ const lim = S.repDays==="0" ? 0 : Date.now()-(+S.repDays)*DAY; return DB.ord.filter(o=>!o.cancelado && !o.practice && o.createdAt>=lim); }
 function entregaDias(o){ const h=[...o.history].reverse().find(x=>x.k==="entregado"); return h ? (h.at-o.createdAt)/DAY : null; }
 function modReportes(){
   const os=repOrders();
@@ -13891,6 +13986,8 @@ function modConfig(){
     <td><input aria-label="Solo ocurre" type="checkbox" data-ch="cfgocurre" data-arg="${i}" ${d.ocurre?"checked":""}></td><td><input aria-label="Precio por kg" type="number" step="0.01" data-in="cfgarr" data-num="1" data-arg="destinos|${i}|kgRate" value="${d.kgRate}" style="width:90px"></td>
     <td><button class="x" data-act="deldest" data-arg="${i}" ${CFG.destinos.length<2?"disabled":""} aria-label="Quitar">×</button></td></tr>`).join("")}</tbody></table></div>
     <button class="btn sec sm" data-act="adddest" style="margin-top:10px">+ Agregar destino</button>
+    <h3 style="margin:24px 0 10px">Unidades (capacidad de referencia)</h3>
+    <div class="scroll"><table><thead><tr><th>Unidad</th><th>m³ útiles</th><th>kg máximos</th></tr></thead><tbody>${Object.entries(CFG.camiones).map(([k,t])=>`<tr><td><input aria-label="Nombre" data-in="cfg" data-arg="camiones.${k}.t" value="${esc(t.t)}"></td><td><input aria-label="m3" type="number" data-in="cfg" data-num="1" data-arg="camiones.${k}.m3" value="${t.m3}" style="width:100px"></td><td><input aria-label="kg" type="number" data-in="cfg" data-num="1" data-arg="camiones.${k}.kg" value="${t.kg}" style="width:110px"></td></tr>`).join("")}</tbody></table></div>
     <div class="note sm" style="margin-top:16px">Los días de tránsito alimentan la fecha estimada de entrega que ve el cliente (días hábiles, con salida al siguiente día hábil). Déjalos vacíos si el destino no tiene tiempo definido. El $/kg de medida especial es un valor de referencia, no una tarifa de ALR.</div>`;
   if(S.cfgTab==="desc") body=`<label class="chk"><input type="checkbox" data-ch="descon" ${CFG.desc.on?"checked":""}><span><b>Aplicar descuento por volumen</b><br><span class="mut sm">Descuenta un porcentaje del flete según el número total de cajas del pedido.</span></span></label>
     <div class="scroll" style="margin-top:14px"><table><thead><tr><th>Desde (cajas)</th><th>Descuento %</th><th></th></tr></thead><tbody>${CFG.desc.tiers.map((t,i)=>`<tr><td><input aria-label="Desde" type="number" data-in="cfgarr" data-num="1" data-arg="desc.tiers|${i}|desde" value="${t.desde}" style="width:110px"></td><td><input aria-label="Porcentaje" type="number" step="0.5" data-in="cfgarr" data-num="1" data-arg="desc.tiers|${i}|pct" value="${t.pct}" style="width:110px"></td><td><button class="x" data-act="deltier" data-arg="${i}" aria-label="Quitar">×</button></td></tr>`).join("")}</tbody></table></div>
@@ -13918,13 +14015,235 @@ function modConfig(){
   return `${ptitle("Configuración")}<div class="card"><div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.cfgTab===k?"on":""}" data-act="cfgtab" data-arg="${k}">${t}</button>`).join("")}</div>${body}</div>`;
 }
 
+/* ==================== Unidades: capacidad y ocupación ==================== */
+function viajeCap(v){ const t=CFG.camiones||{}; return t[v.tipo]||t.torton||{t:"Unidad",m3:45,kg:12000}; }
+function viajeOcc(v){
+  let m3a=0,kga=0,m3l=0,kgl=0,n=0,nl=0;
+  v.ords.forEach(fo=>{ const o=ordOf(fo); if(!o) return; const k=o.sc.length, m3b=o.totals.m3/k, kgb=o.totals.kg/k;
+    for(let i=0;i<k;i++){ m3a+=m3b; kga+=kgb; n++; if(+o.sc[i]>=2){ m3l+=m3b; kgl+=kgb; nl++; } } });
+  const c=viajeCap(v);
+  return {cap:c, m3a,kga,m3l,kgl,n,nl, pctA:Math.max(m3a/c.m3,kga/c.kg), pctL:Math.max(m3l/c.m3,kgl/c.kg)};
+}
+function occBar(label, pct, txt){
+  const p=Math.min(100,Math.round(pct*100)), cls=pct>1?"over":pct>.7?"hi":"";
+  return `<div class="occ"><div class="occ-h"><span>${label}</span><b>${Math.round(pct*100)}%</b></div><div class="occ-t"><i class="${cls}" style="width:${p}%"></i></div><div class="xs mut">${txt}</div></div>`;
+}
+function viajeOccHTML(v){
+  const o=viajeOcc(v), c=o.cap;
+  const t=`${num(o.m3l,1)} de ${c.m3} m³ · ${num(o.kgl,0)} de ${num(c.kg,0)} kg · ${o.nl} de ${o.n} cajas`;
+  const ta=`${num(o.m3a,1)} m³ · ${num(o.kga,0)} kg asignados`;
+  return occBar(`${esc(c.t)} · cargado`, o.pctL, t) + (o.pctA>o.pctL+0.005 ? occBar("Con lo que falta por subir", o.pctA, ta) : "");
+}
+function unidadesHoyHTML(){
+  const vs=DB.via.filter(v=>v.status!=="cerrado");
+  if(!vs.length) return `<div class="mut sm">No hay unidades activas. Crea un viaje en "Viajes y unidades".</div>`;
+  return `<div class="grid g3">${vs.map(v=>`<div class="card flat" style="padding:14px"><div style="display:flex;justify-content:space-between;gap:6px"><b>${esc(v.unidad)}</b><span class="pill">${esc(VIA_ST[v.status])}</span></div><div class="xs mut" style="margin-bottom:6px">${esc(v.id)} → ${esc(dest(v.dest).name)} · ${esc(v.operador)}</div>${viajeOccHTML(v)}</div>`).join("")}</div>`;
+}
+
+/* ==================== Operación por pedido (modo sencillo) ==================== */
+function siguientePaso(o){
+  if(o.cancelado||o.status==="entregado") return null;
+  if(stIdx(o)<1) return {k:"confirmar", t:"Confirmar pedido"};
+  const c=stageCounts(o), pl=n=>`${n} caja${n===1?"":"s"}`;
+  if(c[0]>0) return {k:"recibir", n:c[0], t:`Recibir ${pl(c[0])}`};
+  if(c[1]>0) return {k:"cargar", n:c[1], t:`Cargar ${pl(c[1])} al camión`};
+  if(c[2]>0) return {k:"esperar", n:c[2], t:"Esperando salida del camión"};
+  if(c[3]>0) return {k:"llegar", n:c[3], t:`Llegaron ${pl(c[3])} a destino`};
+  if(c[4]>0) return {k:"entregar", n:c[4], t:"Entregar y firmar"};
+  return null;
+}
+function moverCajas(o, desde, hasta, k){ let m=0; for(let i=1;i<=o.sc.length&&m<k;i++) if(boxStage(o,i)===desde){ setBox(o,i,hasta); m++; } return m; }
+function addInc(o,tipo,detalle,extra){ (o.inc=o.inc||[]).push({tipo,detalle,extra:extra||0,at:Date.now(),por:ROLE?ROLES[ROLE].t:"Sistema"}); }
+function accRecibir(o,k,nota){
+  const pend=stageCounts(o)[0]; k=Math.min(k,pend); const m=moverCajas(o,0,1,k);
+  if(m<pend) addInc(o,"conteo",`Recepción parcial: llegaron ${m} de ${pend} cajas pendientes${nota?` · ${nota}`:""}`); else if(nota) addInc(o,"nota",nota);
+  o.history.push({k:o.status,at:Date.now(),note:`Recepción en almacén: ${m} de ${o.sc.length} cajas${nota?` · ${nota}`:""}`,by:ROLE?ROLES[ROLE].t:"Almacén"});
+  syncStatus(o); logEv("Operación","Recepción",`${o.folio} · ${m} cajas`); saveDB(); return m;
+}
+function accCargar(o,k,viaId){
+  const v=viaOf(viaId); if(!v) return 0; const m=moverCajas(o,1,2,k);
+  if(!v.ords.includes(o.folio)) v.ords.push(o.folio); o.viaje=v.id; if(v.status==="abierto") v.status="cargando";
+  o.history.push({k:o.status,at:Date.now(),note:`${m} cajas cargadas en ${v.unidad} (${v.id})`,by:ROLE?ROLES[ROLE].t:"Almacén"});
+  logEv("Operación","Carga a unidad",`${o.folio} · ${m} cajas → ${v.id}`); saveDB(); return m;
+}
+function accLlegar(o,k){
+  const m=moverCajas(o,3,4,k); syncStatus(o);
+  if(m && stIdx(o)<stKey("almacen_destino")) o.history.push({k:o.status,at:Date.now(),note:`${m} cajas llegaron a destino`,by:ROLE?ROLES[ROLE].t:"Operador"});
+  logEv("Operación","Llegada a destino",`${o.folio} · ${m} cajas`); saveDB(); return m;
+}
+function accEntregar(o,d){
+  const c=stageCounts(o), sin=c[0]+c[1]+c[2];
+  for(let i=1;i<=o.sc.length;i++) setBox(o,i,5);
+  if(sin) addInc(o,"conteo",`Entrega registrada con ${sin} cajas sin registro previo de salida`);
+  o.pod={nombre:d.nombre,id:d.id||"",notas:d.notas||"",firma:d.firma||null,at:Date.now()};
+  bump(o,"entregado",`Entregado a ${d.nombre}${d.firma?" (con firma)":""}`);
+  logEv("Operación","Entrega con firma",`${o.folio} · ${d.nombre}`); saveDB();
+}
+
+/* ---- hoja de acción ---- */
+function declaradoHTML(o){
+  return `<div class="note info sm" style="margin:10px 0"><b>Lo que declaró el cliente</b>${o.items.map(it=>`<div>${it.qty} × ${esc(itemName(it))} — ${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg c/u</div>`).join("")}</div>`;
+}
+function stepperHTML(max,val){
+  return `<label for="ac-k">¿Cuántas cajas?</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" data-act="kstep" data-arg="-1" aria-label="Menos">−</button><input id="ac-k" type="text" inputmode="numeric" autocomplete="off" value="${val}" data-max="${max}" style="text-align:center;font-size:26px;font-weight:800;max-width:130px"><button class="btn sec" data-act="kstep" data-arg="1" aria-label="Más">+</button><button class="btn sec sm" data-act="kall" data-arg="${max}">Todas (${max})</button></div>`;
+}
+function openAccion(folio, kind){
+  const o=ordOf(folio); if(!o) return;
+  const p=siguientePaso(o); kind=kind||(p&&p.k);
+  const hd=`<div style="margin-bottom:6px"><b style="font-size:18px">${esc(o.folio)}</b> ${badge(o)}<div class="sm mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} · <b>${esc(dest(o.dest).name)}</b> · ${o.totals.piezas} cajas · ${num(o.totals.m3,2)} m³</div></div>`;
+  const c=stageCounts(o);
+  if(!kind||kind==="esperar"){
+    openModal({title:"Siguiente paso", key:"acc", html:`${hd}${boxProgress(o,false)}<div class="note sm" style="margin-top:12px">${kind==="esperar"?`Las cajas ya están en la unidad${o.viaje?` <b>${esc(o.viaje)}</b>`:""}. Falta registrar la <b>salida del camión</b> en "Viajes y unidades".`:"Este pedido ya no tiene pasos pendientes."}</div>`,
+      actions:`${kind==="esperar"?`<button class="btn sm" data-act="mod" data-arg="viajes">Ir a Viajes</button>`:""}<button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button>`}); return;
+  }
+  if(kind==="confirmar"){
+    openModal({title:"Confirmar pedido", key:"acc", html:`${hd}${declaradoHTML(o)}<p class="mut sm">Al confirmar se asigna la guía y se genera la remisión.</p>`,
+      actions:`<button class="btn sm" data-act="confirmord2" data-arg="${esc(o.folio)}">Confirmar y generar guía</button>`}); return;
+  }
+  if(kind==="recibir"){
+    const max=c[0];
+    openModal({title:"Recibir cajas en almacén", key:"acc", wide:true, html:`${hd}${declaradoHTML(o)}${stepperHTML(max,max)}
+      <div style="margin-top:12px"><label for="ac-n">Nota (si faltan cajas, escribe qué pasó)</label><input id="ac-n" placeholder="Opcional"></div>
+      <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Verificar medidas de una caja (opcional)</summary>
+        <div class="sm mut" style="margin:8px 0">Mide una caja y compárala con lo declarado. Si excede, queda una incidencia y se estima el ajuste.</div>
+        <div class="row2"><div><label for="mc-it">Tipo de caja</label><select id="mc-it">${o.items.map((it,i)=>`<option value="${i}">${esc(itemName(it))} — declarada ${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg</option>`).join("")}</select></div><div></div></div>
+        <div class="row4" style="margin-top:8px"><div><label for="mc-l">Largo cm</label><input id="mc-l" type="number" inputmode="decimal"></div><div><label for="mc-a">Ancho cm</label><input id="mc-a" type="number" inputmode="decimal"></div><div><label for="mc-h">Alto cm</label><input id="mc-h" type="number" inputmode="decimal"></div><div><label for="mc-k">Peso kg</label><input id="mc-k" type="number" inputmode="decimal"></div></div>
+        <button class="btn sec sm" style="margin-top:10px" data-act="medcheck" data-arg="${esc(o.folio)}">Comparar</button><div id="mc-res" style="margin-top:10px"></div></details>`,
+      actions:`<button class="btn" data-act="dorecibir" data-arg="${esc(o.folio)}">Confirmar recepción</button>`}); return;
+  }
+  if(kind==="cargar"){
+    const max=c[1], vias=DB.via.filter(v=>v.dest===o.dest&&["abierto","cargando"].includes(v.status));
+    const quick=`<div class="card flat" style="margin-top:12px"><b class="sm">No hay unidad abierta a ${esc(dest(o.dest).name)}. Crea una:</b><div class="row3" style="margin-top:8px"><div><label for="qv-u">Unidad</label><input id="qv-u" placeholder="Unidad 214"></div><div><label for="qv-t">Tipo</label><select id="qv-t">${Object.entries(CFG.camiones).map(([k,t])=>`<option value="${k}">${esc(t.t)} (${t.m3} m³)</option>`).join("")}</select></div><div><label for="qv-o">Operador</label><input id="qv-o" placeholder="Nombre"></div></div><button class="btn sec sm" style="margin-top:8px" data-act="quickvia" data-arg="${esc(o.folio)}">Crear unidad</button></div>`;
+    openModal({title:"Cargar al camión", key:"acc", wide:true, html:`${hd}${vias.length?`<label for="ac-via">Unidad</label><select id="ac-via">${vias.map(v=>{ const oc=viajeOcc(v); return `<option value="${v.id}">${esc(v.id)} · ${esc(v.unidad)} (${esc(oc.cap.t)}) · ${Math.round(oc.pctL*100)}% cargado</option>`; }).join("")}</select>`:quick}
+      ${vias.length?`<div style="margin-top:12px">${stepperHTML(max,max)}</div>`:""}`,
+      actions:vias.length?`<button class="btn" data-act="docargar" data-arg="${esc(o.folio)}">Cargar al camión</button>`:""}); return;
+  }
+  if(kind==="llegar"){
+    const max=c[3];
+    openModal({title:"Llegada a destino", key:"acc", html:`${hd}${stepperHTML(max,max)}<div class="note sm" style="margin-top:12px">Cuenta las cajas que bajan del camión en ${esc(dest(o.dest).name)}.</div>`,
+      actions:`<button class="btn" data-act="dollegar" data-arg="${esc(o.folio)}">Confirmar llegada</button>`}); return;
+  }
+  if(kind==="entregar"){ openSign(o.folio,"entrega"); return; }
+}
+function guiaPendiente(folio){
+  const o=ordOf(folio); if(!o){ toast("No encontré ese pedido","bad"); return; }
+  S.view="sistema"; S.mod="oper"; S.drawer=null; render(); openAccion(folio);
+}
+
+/* ---- firma con el dedo ---- */
+let sgDrawing=false, sgDirty=false;
+function openSign(folio, kind){
+  const o=ordOf(folio); if(!o) return; const ent=kind==="entrega";
+  sgDirty=false;
+  openModal({title:ent?"Entrega y firma":"Firma del remitente", key:"sign", wide:true,
+    html:`<div class="sm mut" style="margin-bottom:8px"><b>${esc(o.folio)}</b> · ${esc(o.dst.nombre)} · ${o.totals.piezas} cajas</div>
+      <div class="row2"><div><label for="sg-n">${ent?"Quién recibe":"Nombre de quien entrega"}</label><input id="sg-n" value="${esc(ent?"":o.sol.nombre)}" placeholder="Nombre completo"></div>${ent?`<div><label for="sg-i">Identificación (opcional)</label><input id="sg-i" placeholder="INE / folio"></div>`:`<div></div>`}</div>
+      <div style="margin-top:10px"><label>Firma (dibuja con el dedo)</label><canvas id="sg-c" width="700" height="260" class="sgpad"></canvas>
+      <div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="sgclear">Borrar firma</button></div></div>
+      ${ent?`<div style="margin-top:10px"><label for="sg-o">Notas (opcional)</label><input id="sg-o" placeholder="Ej. caja con golpe, recibió completo…"></div>`:""}`,
+    actions:`<button class="btn ok" data-act="sgsave" data-arg="${esc(o.folio)}|${kind}">${ent?"Guardar entrega":"Guardar firma"}</button>`});
+  initSignPad();
+}
+function initSignPad(){
+  const c=$("#sg-c"); if(!c) return; const x=c.getContext("2d");
+  x.lineWidth=4; x.lineCap="round"; x.lineJoin="round"; x.strokeStyle="#111";
+  const pos=e=>{ const r=c.getBoundingClientRect(); return {x:(e.clientX-r.left)*c.width/r.width, y:(e.clientY-r.top)*c.height/r.height}; };
+  c.addEventListener("pointerdown",e=>{ e.preventDefault(); try{ c.setPointerCapture(e.pointerId); }catch(_){} sgDrawing=true; sgDirty=true; const p=pos(e); x.beginPath(); x.moveTo(p.x,p.y); x.lineTo(p.x+.1,p.y+.1); x.stroke(); });
+  c.addEventListener("pointermove",e=>{ if(!sgDrawing) return; e.preventDefault(); const p=pos(e); x.lineTo(p.x,p.y); x.stroke(); });
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>c.addEventListener(ev,()=>{ sgDrawing=false; }));
+}
+function firmaImg(){ const c=$("#sg-c"); if(!c||!sgDirty) return null;
+  const t=document.createElement("canvas"); t.width=c.width; t.height=c.height; const x=t.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,t.width,t.height); x.drawImage(c,0,0); return t.toDataURL("image/png"); }
+const firmaTag = (f,alt) => f ? `<img src="${f}" alt="${esc(alt)}" style="max-height:60px;max-width:100%;display:block;margin:0 auto 2px">` : "";
+
+/* ==================== Etiquetas descargables y envío al cliente ==================== */
+function etiquetaSVG(o,i){
+  const n=o.sc.length, it=itemOfBox(o,i), q=qrSVG(boxCode(o.folio,i,n));
+  const inner=q.replace(/^<svg[^>]*>/,"").replace(/<\/svg>$/,""), v=q.match(/viewBox="0 0 (\d+) (\d+)"/)[1];
+  const t=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="260" viewBox="0 0 480 260"><rect x="3" y="3" width="474" height="254" rx="8" fill="#fff" stroke="#000" stroke-width="5"/>
+  <svg x="16" y="16" width="228" height="228" viewBox="0 0 ${v} ${v}">${inner}</svg>
+  <g font-family="Arial,Helvetica,sans-serif" fill="#000"><text x="262" y="48" font-size="24" font-weight="700">${t(dest(o.dest).name)}</text>
+  <text x="262" y="112" font-size="60" font-weight="900">${i}<tspan font-size="24" font-weight="700"> / ${n}</tspan></text>
+  <text x="262" y="142" font-size="20" font-weight="700">${t(o.folio)}</text>
+  <text x="262" y="168" font-size="15">${t((o.dst.nombre||"").slice(0,28))}</text>
+  <text x="262" y="190" font-size="15">${t(CFG.brand.short)} · ${t(o.guia||"pre-guía")}</text>
+  ${it?`<text x="262" y="222" font-size="17" font-weight="700">${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg</text><text x="262" y="242" font-size="12">Medidas máximas declaradas</text>`:""}</g></svg>`;
+}
+function etiquetasZip(o){
+  const n=o.sc.length, files=[]; for(let i=1;i<=n;i++) files.push({name:`caja-${pad(i,3)}-de-${n}.svg`, text:etiquetaSVG(o,i)});
+  if(SANDBOX){ download(`etiquetas-${o.folio}.svg.txt`, files.slice(0,3).map(f=>`<!-- ${f.name} -->\n${f.text}`).join("\n\n")+(n>3?`\n\n<!-- … y ${n-3} más -->`:"")); return; }
+  download(`etiquetas-${o.folio}.zip`, zipStore(files), "application/zip");
+}
+
+/* ==================== Operación (pantalla principal de almacén y operador) ==================== */
+function modOper(){
+  const F=S.operF||"todos", me=ROLE;
+  const base=DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1&&o.status!=="entregado");
+  const items=base.map(o=>({o,p:siguientePaso(o)})).filter(x=>x.p);
+  const kinds=[["recibir","Por recibir"],["cargar","Por cargar"],["esperar","En unidad"],["llegar","En ruta"],["entregar","Por entregar"]];
+  const cnt=k=>items.filter(x=>x.p.k===k).length;
+  const lista=items.filter(x=>F==="todos"||x.p.k===F);
+  const por=DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
+  return `${ptitle("Operación",`<span class="mut sm">Un toque por pedido. Sin escanear caja por caja.</span>`)}
+  <div class="opscan card"><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><div style="flex:1;min-width:220px"><b>Escanear guía o caja</b><div class="sm mut">Apunta la cámara al QR de la guía: se abre el pedido con su siguiente paso.</div></div>
+    <button class="btn" data-act="${S.scan.cam?"camoff":"camon"}">${S.scan.cam?"Apagar cámara":"Abrir cámara"}</button></div>
+    ${S.scan.cam?`<div style="margin-top:12px"><video id="cam" class="cam" playsinline muted autoplay></video></div>`:""}
+    <form data-form="guia" style="display:flex;gap:8px;margin-top:12px"><label for="gi" style="display:none">Folio</label><input id="gi" placeholder="Escribe el folio, ej. ALR-2026-0003" autocomplete="off" autocapitalize="characters"><button class="btn sec">Abrir</button></form></div>
+  ${por&&allowed("pedidos")?`<div class="note sm" style="margin-top:12px">Hay <b>${por}</b> pedido(s) nuevos por confirmar en <a href="#" data-act="mod" data-arg="pedidos" style="color:var(--c1);font-weight:700">Pedidos</a>.</div>`:""}
+  <div class="opchips">${[["todos","Todos",items.length],...kinds.map(([k,t])=>[k,t,cnt(k)])].map(([k,t,n])=>`<button class="${F===k?"on":""}" data-act="operf" data-arg="${k}">${t}<b>${n}</b></button>`).join("")}</div>
+  <div class="oplist">${lista.map(({o,p})=>{ const e=eta(o.dest,o.createdAt);
+    return `<div class="opc"><div class="opc-h"><b>${esc(o.folio)}</b>${o.practice?` <span class="pill dark">práctica</span>`:""}${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}<span class="mut sm" style="margin-left:auto">${esc(dest(o.dest).name)}</span></div>
+      <div class="sm">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)}</div>
+      <div class="xs mut" style="margin:4px 0 8px">${o.totals.piezas} cajas · ${num(o.totals.m3,1)} m³ · ${num(o.totals.kg,0)} kg${e?` · llega ${esc(etaText(e))}`:""}</div>
+      ${boxProgress(o,false)}
+      <div class="opc-b"><button class="btn big" data-act="accion" data-arg="${esc(o.folio)}|${p.k}">${esc(p.t)}</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío</button></div></div>`; }).join("")||`<div class="card mut c" style="padding:28px">No hay pedidos en esta lista.</div>`}</div>
+  <h3 style="margin:24px 0 10px">Unidades de hoy</h3>${unidadesHoyHTML()}`;
+}
+
+/* ==================== Práctica guiada ==================== */
+function crearPractica(){
+  let c=DB.cli.find(x=>x.id==="C-PRAC");
+  if(!c){ c={id:"C-PRAC",razon:"Cliente de práctica SA de CV",nombre:"Persona de práctica",rfc:"XAXX010101000",regimen:"601",cp:"64000",uso:"G03",correo:"practica@lancer.mx",tel:"5555555555",dir:"Calle de práctica 1",credito:0,retIva:false,notas:"Cliente para entrenamiento",createdAt:Date.now()}; DB.cli.push(c); }
+  const mk=id=>{ const k=CFG.cajas.find(x=>x.id===id)||CFG.cajas[0]; return {cajaId:k.id,l:k.l,a:k.a,h:k.h,kg:k.kg}; };
+  const d=CFG.destinos.find(x=>!x.ocurre)||CFG.destinos[0];
+  const items=[{...mk(CFG.cajas[0].id),qty:8},{...mk((CFG.cajas[1]||CFG.cajas[0]).id),qty:4}];
+  const o={folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:d.id, items, sol:{nombre:c.nombre,empresa:c.razon,correo:c.correo,tel:c.tel}, dst:{nombre:"Bodega de práctica",dir:"Av. de práctica 100, "+d.name,tel:"5555555556"}, serv:{recoleccion:false,entrega:false,seguro:false}, obs:"PEDIDO DE PRÁCTICA", guia:"", cancelado:false, status:"solicitado", cli:c.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{}, practice:true, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido de práctica",by:"Sistema"}]};
+  o.totals=calc(o.dest,items); o.sc="0".repeat(o.totals.piezas);
+  DB.ord.unshift(o); logEv("Práctica","Pedido de práctica creado",o.folio); saveDB(); return o;
+}
+function practicaPasos(o){
+  const c=stageCounts(o), n=o.sc.length, pr=o.pr||{};
+  return [
+    {t:"Confirmar el pedido y generar la guía", ok:stIdx(o)>=1, act:["accion",`${o.folio}|confirmar`], b:"Confirmar"},
+    {t:"Ver la guía y las etiquetas QR (así las recibe el cliente)", ok:!!(pr.guia&&pr.lab), act:["practdocs",o.folio], b:"Abrir guía y etiquetas", need:1},
+    {t:"Recibir las cajas en almacén", ok:c[0]===0&&stIdx(o)>=1, act:["accion",`${o.folio}|recibir`], b:"Recibir", need:1},
+    {t:"Cargar las cajas al camión", ok:c[0]===0&&c[1]===0&&stIdx(o)>=1, act:["accion",`${o.folio}|cargar`], b:"Cargar", need:3},
+    {t:"Registrar la salida del camión", ok:c[0]+c[1]+c[2]===0&&stIdx(o)>=1, act:["practsalida",o.folio], b:"Registrar salida", need:4},
+    {t:"Registrar la llegada a destino", ok:c[4]+c[5]===n, act:["accion",`${o.folio}|llegar`], b:"Llegada", need:5},
+    {t:"Entregar con firma en el teléfono", ok:!!(o.pod&&o.pod.firma), act:["accion",`${o.folio}|entregar`], b:"Entregar y firmar", need:6},
+    {t:"Crear la factura del pedido", ok:o.fac.length>0, act:["facturar",o.folio], b:"Facturar", need:7}
+  ];
+}
+function modPractica(){
+  const os=DB.ord.filter(o=>o.practice);
+  return `${ptitle("Práctica guiada",`<button class="btn sm" data-act="newpractice">+ Pedido de práctica</button>${os.length?`<button class="btn sec sm" data-act="delpractice">Borrar prácticas</button>`:""}`)}
+  <div class="note info sm" style="margin-bottom:14px">Crea un pedido de práctica (12 cajas) y recórrelo de principio a fin: confirmar, guía y etiquetas, recibir, cargar, salida, llegada, entrega con firma y factura. Es un pedido de entrenamiento; puedes borrarlo cuando quieras.</div>
+  ${os.map(o=>{ const pasos=practicaPasos(o), hechos=pasos.filter(p=>p.ok).length, sig=pasos.findIndex(p=>!p.ok);
+    return `<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><div><h3>${esc(o.folio)} <span class="pill dark">práctica</span></h3><div class="sm mut">${o.totals.piezas} cajas → ${esc(dest(o.dest).name)} · ${hechos} de ${pasos.length} pasos</div></div><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío</button></div>
+    <div class="stack" style="margin:12px 0"><i style="width:${hechos/pasos.length*100}%;background:var(--ok)"></i></div>
+    ${pasos.map((p,i)=>`<div class="pstep ${p.ok?"ok":i===sig?"now":""}"><span class="pn">${p.ok?"✓":i+1}</span><div style="flex:1;min-width:0"><b>${esc(p.t)}</b></div>${p.ok?"":(i===sig?`<button class="btn sm" data-act="${p.act[0]}" data-arg="${esc(p.act[1])}">${esc(p.b)}</button>`:"")}</div>`).join("")}
+    ${sig<0?`<div class="note ok" style="margin-top:12px">¡Práctica completa! Ya recorriste todo el proceso.</div>`:""}</div>`; }).join("")||`<div class="card c" style="padding:30px"><p class="mut">Todavía no hay pedidos de práctica.</p><button class="btn" data-act="newpractice">Crear pedido de práctica</button></div>`}`;
+}
+
 /* ==================== Render y acciones ==================== */
 function render(){
-  applyBrand();
+  applyBrand(); document.body.dataset.view=S.view;
   const v = {cotizar:viewCotizar, rastreo:viewRastreo, sistema:viewSistema, etiquetas:viewEtiquetas}[S.view] || viewCotizar;
   $("#app").innerHTML = v();
   if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); }
   renderOverlay(); attachCam();
+  $$("table.rt").forEach(t=>{ const hs=[...t.querySelectorAll("thead th")].map(h=>h.textContent.trim()); t.querySelectorAll("tbody tr").forEach(tr=>[...tr.children].forEach((td,i)=>{ if(hs[i]) td.setAttribute("data-label",hs[i]); })); });
   if(S.view==="sistema" && S.mod==="scan" && ROLE){ const i=$("#scan-in"); if(i && !S.noFocus) i.focus(); }
 }
 function setPath(obj, path, v){ const p=path.split("."); let c=obj; while(p.length>1) c=c[p.shift()]; c[p[0]]=v; }
@@ -13952,16 +14271,61 @@ const ACT = {
   printlabels(){ window.print(); },
   doc(arg){ const [t,id]=arg.split("|");
     if(t==="mani"){ const v=viaOf(id); if(v) openDoc(manifestoDoc(v),`Manifiesto ${v.id}`); return; }
-    const o=ordOf(id); if(!o) return;
+    const o=ordOf(id); if(!o) return; if(t==="guia"){ o.pr=o.pr||{}; o.pr.guia=true; saveDB(); }
     const ex=`<div class="noprint"><div class="h2" style="margin:16px 0 0">Resumen del envío</div>${envioResumen(o)}</div>`;
     if(t==="guia") openDoc(guiaDoc(o),`Guía ${o.guia||o.folio}`,ex); else openDoc(remisionDoc(o),`Remisión ${o.rem||o.folio}`,ex); },
-  labels(f,el){ S.lab=f; S.labN=48; S.back=el&&el.dataset.from==="sistema"?"sistema":null; S.backOrd=f; S.view="etiquetas"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
+  labels(f,el){ const oo=ordOf(f); if(oo){ oo.pr=oo.pr||{}; oo.pr.lab=true; saveDB(); } S.lab=f; S.labN=48; S.back=el&&el.dataset.from==="sistema"?"sistema":null; S.backOrd=f; S.view="etiquetas"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
   back(){ S.view="sistema"; S.drawer=S.backOrd||null; render(); },
   labmore(){ S.labN+=96; render(); },
   track(f,el,e){ if(e) e.preventDefault(); S.view="rastreo"; S.track=f; S.done=null; S.drawer=null; render(); scrollTo(0,0); },
   newquote(){ S.done=null; Q=newQ(); render(); },
   copytxt(f){ const o=ordOf(f); if(o) copy(orderTexto(o)); },
   copyfield(id){ const e=document.getElementById(id); if(e) copy(e.value); },
+  /* operación sencilla por pedido */
+  accion(arg){ const [f,k]=arg.split("|"); openAccion(f,k); },
+  confirmord2(f){ const o=ordOf(f); confirmOrder(o); closeModal(); render(); toast(`Confirmado · guía ${o.guia}`); },
+  kstep(d){ const i=$("#ac-k"); if(!i) return; const max=+i.dataset.max||0; i.value=Math.max(0,Math.min(max,(parseInt(i.value,10)||0)+(+d))); },
+  kall(m){ const i=$("#ac-k"); if(i) i.value=m; },
+  dorecibir(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0;
+    if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
+    const m=accRecibir(o,k,($("#ac-n")||{}).value.trim()); closeModal(); render(); toast(m<max?`${m} de ${max} cajas recibidas (queda incidencia)`:`${m} cajas recibidas ✓`); },
+  docargar(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0, via=($("#ac-via")||{}).value;
+    if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
+    const v=viaOf(via), oc=viajeOcc(v), n=o.sc.length, pct=Math.max((oc.m3l+k*o.totals.m3/n)/oc.cap.m3,(oc.kgl+k*o.totals.kg/n)/oc.cap.kg);
+    if(pct>1 && !ask(`Con estas cajas la unidad pasa de su capacidad (${Math.round(pct*100)}%)`)) return;
+    const m=accCargar(o,k,via); closeModal(); render(); toast(`${m} cajas cargadas en ${v.unidad} · ${Math.round(Math.min(pct,9.99)*100)}%`); },
+  dollegar(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0;
+    if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
+    const m=accLlegar(o,k); closeModal(); render(); toast(`${m} cajas llegaron a destino`); },
+  quickvia(f){ const o=ordOf(f), u=($("#qv-u")||{}).value.trim(); if(!u){ toast("Escribe el nombre de la unidad","bad"); return; }
+    const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:"—",operador:($("#qv-o").value.trim()||"—"),dest:o.dest,tipo:$("#qv-t").value,status:"abierto",ords:[],fecha:Date.now()};
+    DB.via.unshift(v); logEv("Viajes","Viaje creado",`${v.id} · ${u}`); saveDB(); S.modals.pop(); openAccion(f,"cargar"); },
+  medcheck(f){ const o=ordOf(f), it=o.items[+$("#mc-it").value], g=id=>parseFloat($(id).value);
+    const l=g("#mc-l"),a=g("#mc-a"),h=g("#mc-h"),k=g("#mc-k"); if(![l,a,h,k].every(x=>x>0)){ toast("Captura las 4 medidas","bad"); return; }
+    const tol=2, ex=[]; [["largo",l,it.l],["ancho",a,it.a],["alto",h,it.h]].forEach(([n,m,d])=>{ if(m>d+tol) ex.push(`${n} ${num(m,1)} cm (declarado ${d})`); }); if(k>it.kg*1.05) ex.push(`peso ${num(k,1)} kg (declarado ${num(it.kg,1)})`);
+    const res=$("#mc-res");
+    if(!ex.length){ res.innerHTML=`<div class="note ok sm"><b>Dentro de lo declarado ✓</b> (tolerancia ${tol} cm / 5% en peso)</div>`; S.mc=null; return; }
+    const decl=pieceCalc(it,o.dest).line, ratio=Math.max((l*a*h)/(it.l*it.a*it.h), k/it.kg, 1), est=decl*ratio, diff=Math.max(0,est-decl);
+    S.mc={folio:f,txt:`${itemName(it)}: excede en ${ex.join(", ")}`,diff};
+    res.innerHTML=`<div class="note bad sm"><b>Excede lo declarado:</b> ${esc(ex.join(" · "))}.<br>Si las ${it.qty} cajas de este tipo miden así, el flete sería ~<b>${money(est)}</b> vs ${money(decl)} declarado${diff>0?` → ajuste aprox. <b>${money(diff)}</b>`:""} (proporcional al volumen y peso; ALR define el cobro final).</div><button class="btn sm" style="margin-top:8px" data-act="medinc">Registrar incidencia</button>`; },
+  medinc(){ const m=S.mc; if(!m) return; const o=ordOf(m.folio); addInc(o,"medidas",m.txt,m.diff); logEv("Operación","Medidas fuera de lo declarado",`${o.folio} · ${m.txt}`); saveDB(); S.mc=null; $("#mc-res").innerHTML=`<div class="note ok sm">Incidencia registrada en el pedido.</div>`; },
+  sign(arg){ const [f,k]=arg.split("|"); openSign(f,k); },
+  sgclear(){ const c=$("#sg-c"); if(c){ c.getContext("2d").clearRect(0,0,c.width,c.height); sgDirty=false; } },
+  sgsave(arg){ const [f,kind]=arg.split("|"), o=ordOf(f), n=($("#sg-n")||{}).value.trim();
+    if(!n){ toast("Escribe el nombre","bad"); return; } const img=firmaImg(); if(!img){ toast("Falta la firma: dibújala con el dedo","bad"); return; }
+    if(kind==="entrega") accEntregar(o,{nombre:n,id:($("#sg-i")||{}).value.trim(),notas:($("#sg-o")||{}).value.trim(),firma:img});
+    else { o.firmas=o.firmas||{}; o.firmas.remitente={nombre:n,img,at:Date.now()}; logEv("Operación","Firma del remitente",`${o.folio} · ${n}`); saveDB(); }
+    closeModal(); render(); toast(kind==="entrega"?"Entrega guardada con firma":"Firma guardada"); },
+  newpractice(){ const o=crearPractica(); S.mod="practica"; render(); toast(`Pedido de práctica ${o.folio} creado`); },
+  delpractice(){ if(!ask("¿Borrar los pedidos de práctica?")) return; const fs=DB.ord.filter(o=>o.practice).map(o=>o.folio);
+    DB.ord=DB.ord.filter(o=>!o.practice); DB.via.forEach(v=>{ v.ords=v.ords.filter(x=>!fs.includes(x)); }); DB.fac=DB.fac.filter(f=>!f.ords.every(x=>fs.includes(x))); saveDB(); render(); toast("Prácticas borradas"); },
+  practdocs(f){ const o=ordOf(f); o.pr=o.pr||{}; o.pr.guia=true; o.pr.lab=true; saveDB(); ACT.labels(f,{dataset:{from:"sistema"}}); },
+  practsalida(f){ const o=ordOf(f); if(!o.viaje||!viaOf(o.viaje)){ toast("Primero carga las cajas a un camión","bad"); return; } ACT.viasalida(o.viaje); },
+  operf(k){ S.operF=k; render(); },
+  labzip(f){ etiquetasZip(ordOf(f)); },
+  qgo(){ const v=qvalid(); if(v.ok){ ACT.qsend(); return; } toast(v.msg,"bad");
+    const order=[["f-sn",Q.sol.nombre.trim()],["f-sc",/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())],["f-st",Q.sol.tel.replace(/\D/g,"").length>=8],["f-dn",Q.dst.nombre.trim()],["f-dd",Q.dst.dir.trim()],["f-dt",Q.dst.tel.replace(/\D/g,"").length>=8]];
+    const bad=order.find(([id,ok])=>!ok); if(bad){ const e=document.getElementById(bad[0]); if(e){ e.scrollIntoView({block:"center",behavior:"smooth"}); e.focus(); } } },
   /* cotizador */
   qadd(){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); },
   pdel(a,el){ const i=+el.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } },
@@ -13971,8 +14335,7 @@ const ACT = {
   advance(f){ const o=ordOf(f), i=stIdx(o); if(i<1){ toast("Confirma primero el pedido","bad"); return; }
     const k=CFG.steps[i+1].k; advance(o,k,($("#d-note")||{}).value||""); if(k==="entregado"){ for(let n=1;n<=o.sc.length;n++) setBox(o,n,5); if(!o.pod) o.pod={nombre:"Registrado por ALR",id:"",notas:"",at:Date.now()}; }
     logEv("Pedidos","Checkpoint",`${o.folio} → ${stLabel(k)}`); saveDB(); render(); toast("Checkpoint registrado"); },
-  entrega(f){ const o=ordOf(f), n=($("#p-n")||{}).value.trim(); if(!n){ toast("Escribe quién recibe","bad"); return; }
-    registrarEntrega(o,n,$("#p-i").value.trim(),$("#p-o").value.trim()); render(); toast("Entrega registrada"); },
+  entrega(f){ openSign(f,"entrega"); },
   cancelord(f){ if(!ask("¿Cancelar este pedido?")) return; const o=ordOf(f); o.cancelado=true; o.history.push({k:o.status,at:Date.now(),note:"Pedido cancelado",by:ROLES[ROLE].t}); logEv("Pedidos","Cancelado",o.folio); saveDB(); render(); },
   orderjson(f){ const o=ordOf(f); download(o.folio+".json", JSON.stringify(orderJSON(o),null,2), "application/json"); },
   exportorders(){ download("pedidos-alr.csv", csvOrders(DB.ord), "text/csv"); },
@@ -14052,6 +14415,7 @@ const CH = {
   svia(v){ S.scan.via=v; refreshScan(); }, sord(v){ S.scan.ord=v; refreshScan(); },
   repdays(v){ S.repDays=v; render(); },
   qserv(v,el){ Q.serv[el.dataset.arg]=el.checked; },
+  qnotif(v,el){ Q.notif[el.dataset.arg]=el.checked; },
   cfgocurre(v,el){ CFG.destinos[+el.dataset.arg].ocurre=el.checked; saveCfg(); },
   descon(v,el){ CFG.desc.on=el.checked; saveCfg(); },
   logofile(v,el){ const f=el.files[0]; if(!f) return; if(f.size>1.5e6){ toast("Imagen muy pesada (máx. 1.5 MB)","bad"); return; }
@@ -14064,10 +14428,11 @@ const FORM = {
   login(f){ const pin=$("#pin").value; let role=f.querySelector("input[name=role]:checked").value;
     if(pin===CFG.devPin) role="dev"; else if(pin!==CFG.pin){ toast("PIN incorrecto","bad"); $("#pin").value=""; return; }
     ROLE=role; store.set(KEY_ROLE,role); S.mod=ROLES[role].mods[0]; logEv("Acceso","Inicio de sesión",ROLES[role].t); saveDB();
-    if(S.pendingScan){ S.mod="scan"; runPendingScan(); } render(); },
+    if(S.pendingScan){ S.mod="scan"; runPendingScan(); } if(S.pendingGuia){ render(); runPendingScan(); return; } render(); },
+  guia(){ const i=$("#gi"), f=i.value.trim().toUpperCase(); if(!f) return; i.value=""; guiaPendiente(f); },
   scan(){ const i=$("#scan-in"), c=i.value.trim(); if(!c) return; submitScan(c); i.value=""; i.focus(); },
   newvia(){ const u=$("#nv-u").value.trim(); if(!u){ toast("Escribe la unidad","bad"); return; }
-    const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:$("#nv-p").value.trim()||"—",operador:$("#nv-o").value.trim()||"—",dest:$("#nv-d").value,status:"abierto",ords:[],fecha:Date.now()};
+    const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:$("#nv-p").value.trim()||"—",operador:$("#nv-o").value.trim()||"—",dest:$("#nv-d").value,tipo:$("#nv-t").value,status:"abierto",ords:[],fecha:Date.now()};
     DB.via.unshift(v); logEv("Viajes","Viaje creado",`${v.id} · ${u}`); saveDB(); render(); toast("Viaje creado"); }
 };
 document.addEventListener("click", e=>{
@@ -14089,10 +14454,14 @@ window.addEventListener("storage", e=>{ if(e.key===KEY_DB && e.newValue){ try{ D
 /* ==================== Arranque ==================== */
 /* Una caja escaneada con la cámara normal del teléfono abre la dirección #s.FOLIO.CAJA.TOTAL y se registra sola. */
 function takeScanHash(){
-  const h=(location.hash||"").slice(1); if(!h.startsWith("s.")) return false;
+  const h=(location.hash||"").slice(1); let m;
+  if(m=h.match(/^g\.([A-Za-z0-9-]+)$/)){ S.pendingGuia=m[1]; S.view="sistema"; S.mod="oper"; try{ history.replaceState(null,"","#sistema"); }catch(e){} return true; }
+  if(m=h.match(/^t\.([A-Za-z0-9-]+)$/)){ S.view="rastreo"; S.track=m[1]; S.done=null; return true; }
+  if(!h.startsWith("s.")) return false;
   S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
 }
 function runPendingScan(){
+  if(S.pendingGuia&&ROLE){ const f=S.pendingGuia; S.pendingGuia=null; setTimeout(()=>guiaPendiente(f),0); return; }
   if(!S.pendingScan||!ROLE) return;
   if(!allowed("scan")){ S.scanResult={ok:false,kind:"bad",msg:"Tu perfil no puede registrar escaneos"}; S.pendingScan=null; return; }
   const r=doScan(S.pendingScan,"auto",{via:S.scan.via}); S.pendingScan=null; r.at=Date.now();

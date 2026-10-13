@@ -11,7 +11,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v6", APP_DATE = "13 oct 2026";
+const APP_VERSION = "v7", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -44,18 +44,23 @@ const DEFAULT_CFG = () => ({
     {id:"c2", name:"Caja 2", l:70, a:47, h:34, kg:30, prices:{qro:90.63, mty:110.08, nld:129.47}},
     {id:"c3", name:"Caja 3", l:50, a:50, h:50, kg:15, prices:{qro:18.95, mty:18.96, nld:32.23}}
   ],
+  camiones:{
+    rabon:{t:"Rabón", m3:28, kg:6000},
+    torton:{t:"Torton", m3:45, kg:12000},
+    trailer:{t:"Tráiler 43'", m3:75, kg:22000}
+  },
   steps:[
     {k:"solicitado",       t:"Solicitud recibida",       d:"ALR recibió tu pedido y lo está revisando."},
-    {k:"confirmado",       t:"Confirmado por ALR",       d:"Pedido aceptado y guía asignada."},
-    {k:"recolectado",      t:"Mercancía recolectada",    d:"Tu carga ya está en poder de ALR."},
-    {k:"almacen_origen",   t:"En almacén de origen",     d:"Cajas recibidas y escaneadas en almacén."},
-    {k:"transito",         t:"En tránsito",              d:"Tu carga va en camino al destino."},
-    {k:"almacen_destino",  t:"En plaza de destino",      d:"Llegó a la plaza; en proceso de entrega."},
+    {k:"confirmado",       t:"Pedido aceptado",          d:"ALR aceptó tu pedido y asignó tu guía."},
+    {k:"recolectado",      t:"Recolectado",              d:"ALR ya recogió tu carga."},
+    {k:"almacen_origen",   t:"En almacén de origen",     d:"Tus cajas llegaron al almacén de ALR y fueron contadas."},
+    {k:"transito",         t:"En camino",                d:"Tu carga va en camino al destino."},
+    {k:"almacen_destino",  t:"Llegó a destino",          d:"Tu carga llegó a la plaza; está por entregarse."},
     {k:"entregado",        t:"Entregado",                d:"Mercancía entregada al destinatario."}
   ]
 });
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
-(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; });
+(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
 const saveCfg = () => store.set(KEY_CFG, CFG);
 
@@ -71,16 +76,16 @@ const stageColor = i => ["#dfe5f0","#9bb4e6","#4f78d4","#e0a21b","#b06ad8","#168
 
 /* ==================== Roles ==================== */
 const ROLES = {
-  admin:   {t:"Dirección ALR",      mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora"], who:"Operación completa"},
-  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes"], who:"Pedidos, clientes y facturación"},
-  almacen: {t:"Almacén",            mods:["dash","pedidos","scan","viajes","almacen","docs"], who:"Recepción, carga y viajes"},
-  operador:{t:"Operador de unidad", mods:["scan","viajes"], who:"Escáner y su viaje"},
-  dev:     {t:"LANCER · Desarrollo", mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora"], who:"Acceso interno de LANCER", hidden:true}
+  admin:   {t:"Dirección ALR",      mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora","practica"], who:"Operación completa"},
+  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes","practica"], who:"Pedidos, clientes y facturación"},
+  almacen: {t:"Almacén",            mods:["oper","viajes","almacen","pedidos","docs","dash","scan","practica"], who:"Recibir, cargar y entregar"},
+  operador:{t:"Operador de unidad", mods:["oper","viajes","practica"], who:"Su viaje: cargar, llegar y entregar"},
+  dev:     {t:"LANCER · Desarrollo", mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora","practica"], who:"Acceso interno de LANCER", hidden:true}
 };
 const MODS = {
-  dash:{t:"Panel general",ic:"▦"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escáner QR",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
+  dash:{t:"Panel general",ic:"▦"}, oper:{t:"Operación",ic:"✋"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escaneo por caja",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
   almacen:{t:"Almacén",ic:"▣"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
-  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}
+  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}, practica:{t:"Práctica guiada",ic:"✎"}
 };
 
 /* ==================== Cálculo de tarifa ==================== */
@@ -107,7 +112,7 @@ function calc(destId, items){
   const lines = items.map(it=>{
     const p = pieceCalc(it,destId);
     m3+=p.m3; kg+=p.kg; kgVol+=p.kgVol; kgCob+=it.custom?Math.max(p.kg,p.kgVol):p.kg; sub+=p.line; piezas+=it.qty; est=est||p.est;
-    return {...it, ...p};
+    return {...it, ...p, kgU:it.kg};
   });
   const pct = discPct(piezas), disc = sub*pct/100, net = sub-disc;
   const minApplied = net>0 && net<CFG.minimo;
@@ -188,3 +193,13 @@ function toast(msg, kind=""){ const t=document.createElement("div"); t.className
 let _askKey=null, _askT=0;
 function ask(msg){ if(_askKey===msg && Date.now()-_askT<5000){ _askKey=null; return true; } _askKey=msg; _askT=Date.now(); toast(msg+" — da clic otra vez para confirmar"); return false; }
 function beep(ok){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A) return; const c=new A(), o=c.createOscillator(), g=c.createGain(); o.connect(g); g.connect(c.destination); o.frequency.value=ok?880:220; g.gain.value=.08; o.start(); o.stop(c.currentTime+(ok?.09:.28)); setTimeout(()=>c.close(),400); }catch(e){} }
+
+/* ---- utilidades de caja y envío ---- */
+function itemOfBox(o,n){ let acc=0; for(const it of o.items){ acc+=it.qty; if(n<=acc) return it; } return o.items[o.items.length-1]; }
+const telMX = t => { const d=String(t||"").replace(/\D/g,""); return d.length===10?"52"+d:d; };
+const waLink = (tel,text) => `https://wa.me/${telMX(tel)}?text=${encodeURIComponent(text)}`;
+const mailLink = (to,subj,body) => `mailto:${encodeURIComponent(to||"")}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+function shareText(o){
+  const e=eta(o.dest,o.createdAt);
+  return `${CFG.brand.short} · Pedido ${o.folio}\n${o.totals.piezas} cajas ${CFG.origen} → ${dest(o.dest).name}${o.guia?`\nGuía ${o.guia}`:""}${e?`\nEntrega estimada: ${etaText(e)}`:""}\nSeguimiento: ${qrBase()}#t.${o.folio}\nGuía/pre-guía para tu almacén: ${qrBase()}#g.${o.folio}`;
+}
