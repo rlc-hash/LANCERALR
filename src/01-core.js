@@ -11,7 +11,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v5", APP_DATE = "8 oct 2026";
+const APP_VERSION = "v6", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -31,6 +31,8 @@ const DEFAULT_CFG = () => ({
   iva:16,
   vigencia:"Marzo 2026 – Marzo 2027",
   pin:"1234",
+  devPin:"lancer2026",
+  qrBase:"",
   desc:{ on:false, tiers:[{desde:50,pct:5},{desde:100,pct:8},{desde:200,pct:12},{desde:300,pct:19}] },
   destinos:[
     {id:"qro", name:"Querétaro",    transit:"1–2 días",    tMin:1, tMax:2,    ocurre:false, kgRate:2.15},
@@ -53,7 +55,7 @@ const DEFAULT_CFG = () => ({
   ]
 });
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
-(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc"].forEach(k=>{ if(!CFG[k]) CFG[k]=d[k]; });
+(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; });
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
 const saveCfg = () => store.set(KEY_CFG, CFG);
 
@@ -69,15 +71,16 @@ const stageColor = i => ["#dfe5f0","#9bb4e6","#4f78d4","#e0a21b","#b06ad8","#168
 
 /* ==================== Roles ==================== */
 const ROLES = {
-  admin:   {t:"Dirección ALR",      mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora"], who:"Acceso total"},
+  admin:   {t:"Dirección ALR",      mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora"], who:"Operación completa"},
   ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes"], who:"Pedidos, clientes y facturación"},
   almacen: {t:"Almacén",            mods:["dash","pedidos","scan","viajes","almacen","docs"], who:"Recepción, carga y viajes"},
-  operador:{t:"Operador de unidad", mods:["scan","viajes"], who:"Escáner y su viaje"}
+  operador:{t:"Operador de unidad", mods:["scan","viajes"], who:"Escáner y su viaje"},
+  dev:     {t:"LANCER · Desarrollo", mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora"], who:"Acceso interno de LANCER", hidden:true}
 };
 const MODS = {
   dash:{t:"Panel general",ic:"▦"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escáner QR",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
   almacen:{t:"Almacén",ic:"▣"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
-  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}
+  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}
 };
 
 /* ==================== Cálculo de tarifa ==================== */
@@ -133,9 +136,12 @@ function qrSVG(text){
   const s = n+8;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}" shape-rendering="crispEdges"><rect width="${s}" height="${s}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
 }
-const boxCode = (folio,n,total) => `ALR|${folio}|${n}|${total}`;
+const qrBase = () => ((CFG.qrBase||"").trim() || location.href.split("#")[0]);
+/* El QR es una dirección: con la cámara normal del teléfono abre el sistema y la caja se registra sola. */
+const boxCode = (folio,n,total) => `${qrBase()}#s.${folio}.${n}.${total}`;
 function parseBox(code){
-  const m = String(code||"").trim().match(/^ALR\|([A-Za-z0-9-]+)\|(\d+)\|(\d+)$/);
+  const s = String(code||"").trim();
+  const m = s.match(/^ALR\|([A-Za-z0-9-]+)\|(\d+)\|(\d+)$/) || s.match(/#s\.([A-Za-z0-9-]+)\.(\d+)\.(\d+)\s*$/);
   return m ? {folio:m[1], n:+m[2], total:+m[3]} : null;
 }
 

@@ -11,10 +11,11 @@ function viewSistema(){
   if(!ROLE) return `<div class="wrap" style="padding:36px 16px"><div class="card" style="max-width:520px;margin:0 auto">
     <h2 style="font-size:24px">Sistema ALR</h2><p class="mut">Operación, almacén, facturación y control de envíos. Elige tu perfil para entrar.</p>
     <form data-form="login">
-      <div class="grid" style="gap:8px;margin-bottom:14px">${Object.entries(ROLES).map(([k,r],i)=>`<label class="chk"><input type="radio" name="role" value="${k}" ${i===0?"checked":""}><span><b>${esc(r.t)}</b><br><span class="mut sm">${esc(r.who)}</span></span></label>`).join("")}</div>
+      <div class="grid" style="gap:8px;margin-bottom:14px">${Object.entries(ROLES).filter(([k,r])=>!r.hidden).map(([k,r],i)=>`<label class="chk"><input type="radio" name="role" value="${k}" ${i===0?"checked":""}><span><b>${esc(r.t)}</b><br><span class="mut sm">${esc(r.who)}</span></span></label>`).join("")}</div>
       <label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
       <button class="btn" style="width:100%;margin-top:12px">Entrar</button>
     </form>
+    ${S.pendingScan?`<div class="note info sm" style="margin-top:12px">Inicia sesión para registrar la caja que escaneaste.</div>`:""}
     <div class="mut sm" style="margin-top:12px">Demo: PIN <b>${esc(CFG.pin)}</b>. Cada perfil ve solo los módulos que le corresponden.</div></div></div>`;
   if(!allowed(S.mod)) S.mod = ROLES[ROLE].mods[0];
   const porConf = DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
@@ -23,6 +24,22 @@ function viewSistema(){
   const nav = ROLES[ROLE].mods.map(m=>`<button class="nv ${S.mod===m?"on":""}" data-act="mod" data-arg="${m}"><span>${MODS[m].ic}</span>${MODS[m].t}${nb[m]?`<span class="n">${nb[m]}</span>`:""}</button>`).join("");
   const body = {dash:modDash,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
   return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}</aside><div class="main">${body}</div></div>`;
+}
+/* ---- resumen de envío (se reutiliza en facturas, guías, remisiones y escáner) ---- */
+function envioLinea(o){
+  if(o.cancelado) return "Cancelado";
+  const n=o.sc.length, rec=n-stageCounts(o)[0], e=eta(o.dest,o.createdAt);
+  if(o.status==="entregado") return `Entregado${o.pod?` a ${o.pod.nombre}`:""}`;
+  return `${stLabel(o.status)} · ${rec}/${n} cajas${e?` · llega ${etaText(e)}`:""}`;
+}
+function miniSteps(o){ const cur=stIdx(o); return `<div class="mini">${CFG.steps.map((s,i)=>`<span class="${i<cur||(i===cur&&s.k==="entregado")?"d":i===cur?"c":""}" title="${esc(s.t)}"></span>`).join("")}</div>`; }
+function envioResumen(o){
+  const e=eta(o.dest,o.createdAt), last=o.history[o.history.length-1];
+  return `<div class="card flat" style="margin-top:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>${esc(o.folio)}</b> ${badge(o)}<div class="sm mut">${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> · Guía ${esc(o.guia||"—")} · Remisión ${esc(o.rem||"—")}</div></div>
+    <div class="r sm">${e&&o.status!=="entregado"&&!o.cancelado?`Llega <b>${esc(etaText(e))}</b>`:""}${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}</div></div>
+    ${miniSteps(o)}<div class="sm" style="margin:6px 0">${esc(stLabel(o.status))}${last&&last.note?` · ${esc(last.note)}`:""} <span class="mut">(${fdate(last.at)})</span></div>
+    ${boxProgress(o,true)}${o.pod?`<div class="note ok sm" style="margin-top:8px">Entregado a ${esc(o.pod.nombre)}${o.pod.id?` · ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)}</div>`:""}
+    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button></div></div>`;
 }
 const ptitle = (t,right) => `<div class="ptitle"><h2>${esc(t)}</h2><div style="margin-left:auto" class="chips">${right||""}</div></div>`;
 

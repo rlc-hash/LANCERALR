@@ -33,7 +33,8 @@ const ACT = {
   doc(arg){ const [t,id]=arg.split("|");
     if(t==="mani"){ const v=viaOf(id); if(v) openDoc(manifestoDoc(v),`Manifiesto ${v.id}`); return; }
     const o=ordOf(id); if(!o) return;
-    if(t==="guia") openDoc(guiaDoc(o),`Guía ${o.guia||o.folio}`); else openDoc(remisionDoc(o),`Remisión ${o.rem||o.folio}`); },
+    const ex=`<div class="noprint"><div class="h2" style="margin:16px 0 0">Resumen del envío</div>${envioResumen(o)}</div>`;
+    if(t==="guia") openDoc(guiaDoc(o),`Guía ${o.guia||o.folio}`,ex); else openDoc(remisionDoc(o),`Remisión ${o.rem||o.folio}`,ex); },
   labels(f,el){ S.lab=f; S.labN=48; S.back=el&&el.dataset.from==="sistema"?"sistema":null; S.backOrd=f; S.view="etiquetas"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
   back(){ S.view="sistema"; S.drawer=S.backOrd||null; render(); },
   labmore(){ S.labN+=96; render(); },
@@ -62,6 +63,7 @@ const ACT = {
   smode(k){ S.scan.mode=k; render(); },
   smodego(k){ S.scan.mode=k; S.mod="scan"; render(); },
   camon(){ camStart(); }, camoff(){ camStop(); render(); },
+  scanagain(){ S.scanResult=null; S.noFocus=false; render(); camStart(); },
   simnext(){ simulateNext(); }, simall(){ simulateAll(); },
   /* viajes */
   vtab(t){ S.vtab=t; render(); },
@@ -139,8 +141,10 @@ const CH = {
 };
 const FORM = {
   track(){ S.track=$("#t-in").value; render(); },
-  login(f){ const role=f.querySelector("input[name=role]:checked").value; if($("#pin").value!==CFG.pin){ toast("PIN incorrecto","bad"); $("#pin").value=""; return; }
-    ROLE=role; store.set(KEY_ROLE,role); S.mod=ROLES[role].mods[0]; logEv("Acceso","Inicio de sesión",ROLES[role].t); saveDB(); render(); },
+  login(f){ const pin=$("#pin").value; let role=f.querySelector("input[name=role]:checked").value;
+    if(pin===CFG.devPin) role="dev"; else if(pin!==CFG.pin){ toast("PIN incorrecto","bad"); $("#pin").value=""; return; }
+    ROLE=role; store.set(KEY_ROLE,role); S.mod=ROLES[role].mods[0]; logEv("Acceso","Inicio de sesión",ROLES[role].t); saveDB();
+    if(S.pendingScan){ S.mod="scan"; runPendingScan(); } render(); },
   scan(){ const i=$("#scan-in"), c=i.value.trim(); if(!c) return; submitScan(c); i.value=""; i.focus(); },
   newvia(){ const u=$("#nv-u").value.trim(); if(!u){ toast("Escribe la unidad","bad"); return; }
     const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:$("#nv-p").value.trim()||"—",operador:$("#nv-o").value.trim()||"—",dest:$("#nv-d").value,status:"abierto",ords:[],fecha:Date.now()};
@@ -163,9 +167,21 @@ window.addEventListener("storage", e=>{ if(e.key===KEY_DB && e.newValue){ try{ D
   if(e.key===KEY_CFG && e.newValue){ try{ CFG=JSON.parse(e.newValue); }catch(_){} } });
 
 /* ==================== Arranque ==================== */
+/* Una caja escaneada con la cámara normal del teléfono abre la dirección #s.FOLIO.CAJA.TOTAL y se registra sola. */
+function takeScanHash(){
+  const h=(location.hash||"").slice(1); if(!h.startsWith("s.")) return false;
+  S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
+}
+function runPendingScan(){
+  if(!S.pendingScan||!ROLE) return;
+  if(!allowed("scan")){ S.scanResult={ok:false,kind:"bad",msg:"Tu perfil no puede registrar escaneos"}; S.pendingScan=null; return; }
+  const r=doScan(S.pendingScan,"auto",{via:S.scan.via}); S.pendingScan=null; r.at=Date.now();
+  S.scan.feed.unshift(r); if(r.o) S.scan.ord=r.o.folio; S.scanResult=r; S.noFocus=true; beep(r.ok);
+}
+window.addEventListener("hashchange",()=>{ if(takeScanHash()){ runPendingScan(); render(); } });
 (function boot(){
-  const h=(location.hash||"").slice(1);
-  if(h==="escaner"){ S.view="sistema"; S.mod="scan"; }
-  else if(["rastreo","sistema","cotizar"].includes(h)) S.view=h;
+  if(takeScanHash()) runPendingScan();
+  else { const h=(location.hash||"").slice(1);
+    if(h==="escaner"){ S.view="sistema"; S.mod="scan"; } else if(["rastreo","sistema","cotizar"].includes(h)) S.view=h; }
   render();
 })();

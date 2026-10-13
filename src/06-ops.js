@@ -1,6 +1,7 @@
 /* ==================== Escáner QR ==================== */
 let camStream=null, camTimer=null, lastCode="", lastAt=0;
 const SCAN_MODES = [
+  {k:"auto",     t:"Automático",         s:"Cada escaneo avanza la caja al siguiente paso"},
   {k:"recibida", t:"Recibir en almacén", s:"Llega la paquetería"},
   {k:"cargada",  t:"Cargar a unidad",    s:"Se sube al camión"},
   {k:"llegada",  t:"Llegada a plaza",    s:"Se descarga en destino"},
@@ -10,21 +11,24 @@ function scanOrders(){ return DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1&&o.stat
 function scanFeedHTML(){
   const f=S.scan.feed;
   if(!f.length) return `<div class="mut sm">Aún no hay escaneos. Escanea una etiqueta, escribe el código o usa "Simular siguiente caja".</div>`;
-  return f.slice(0,14).map(r=>`<div class="it ${r.kind}"><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.75">${fdate(r.at)}${r.code?` · <b>${esc(r.code)}</b>`:""}</div></div></div>`).join("");
+  return f.slice(0,14).map(r=>`<div class="it ${r.kind}" ${r.o?`data-act="open" data-arg="${esc(r.o.folio)}" style="cursor:pointer" title="Ver envío completo"`:""}><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.75">${fdate(r.at)}${r.o?` · toca para ver el envío`:""}</div></div></div>`).join("");
 }
 function scanReconHTML(){
-  const st=STAGES.find(s=>s.k===S.scan.mode);
+  const auto = S.scan.mode==="auto";
+  const st=auto?null:STAGES.find(s=>s.k===S.scan.mode);
   const o=S.scan.ord?ordOf(S.scan.ord):null;
   let h="";
-  if(S.scan.mode==="cargada" && S.scan.via){ const v=viaOf(S.scan.via); if(v){ const f=viajeFaltantes(v), cg=viajeCargadas(v); const tot=v.ords.reduce((s,fo)=>s+(ordOf(fo)?ordOf(fo).sc.length:0),0);
+  if((S.scan.mode==="cargada"||auto) && S.scan.via){ const v=viaOf(S.scan.via); if(v&&["abierto","cargando"].includes(v.status)){ const f=viajeFaltantes(v), cg=viajeCargadas(v); const tot=v.ords.reduce((s,fo)=>s+(ordOf(fo)?ordOf(fo).sc.length:0),0);
     h+=`<div class="note ${f?"info":"ok"} sm" style="margin-bottom:12px"><b>${esc(v.id)} · ${esc(v.unidad)}</b> → ${esc(dest(v.dest).name)}: ${cg} cajas cargadas${tot?` de ${tot} asignadas`:""}${f?` · faltan ${f}`:" · carga completa ✓"}</div>`; } }
-  if(!o) return h+`<div class="mut sm">Elige un pedido para ver la conciliación de sus cajas (${esc(st.t)}).</div>`;
-  const n=o.sc.length, c=stageCounts(o), done=atLeast(o,st.i), falt=faltantesTxt(o,st.i);
-  return h+`<div class="h2" style="margin-bottom:6px">${esc(o.folio)} <span class="pill ${done===n?"ok":"warn"}">${done} de ${n} · ${esc(st.t)}</span></div>
+  if(!o) return h+`<div class="mut sm">Elige un pedido (o escanea una caja) para ver la conciliación de sus cajas.</div>`;
+  const n=o.sc.length, c=stageCounts(o), done=auto?n-c[0]:atLeast(o,st.i), falt=faltantesTxt(o,auto?1:st.i);
+  const etiqueta = auto?"recibidas en almacén":st.t;
+  return h+`<div class="h2" style="margin-bottom:6px">${esc(o.folio)} <span class="pill ${done===n?"ok":"warn"}">${done} de ${n} · ${esc(etiqueta)}</span></div>
     <div class="mut sm" style="margin-bottom:8px">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>
     ${boxProgress(o,false)}
     ${done===n?`<div class="note ok sm" style="margin-top:10px">Conciliación completa: entraron las ${n} cajas ✓</div>`:`<div class="note sm" style="margin-top:10px"><b>Faltan ${n-done} cajas:</b> ${esc(falt)}</div>`}
-    ${n<=400?`<div class="boxes">${Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join("")}</div>`:""}`;
+    ${n<=400?`<div class="boxes">${Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join("")}</div>`:""}
+    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`;
 }
 function refreshScan(){ const a=$("#scan-feed"); if(a) a.innerHTML=scanFeedHTML(); const b=$("#scan-recon"); if(b) b.innerHTML=scanReconHTML(); }
 function submitScan(code){
@@ -32,20 +36,27 @@ function submitScan(code){
   S.scan.feed.unshift({...res, at:Date.now()}); if(S.scan.feed.length>40) S.scan.feed.pop();
   if(res.o && res.kind!=="bad" && !S.scan.ord) S.scan.ord=res.o.folio;
   if(res.o && res.ok) S.scan.ord=res.o.folio;
+  S.scanResult=null; const rc=$("#scan-result"); if(rc) rc.remove();
   beep(res.ok); refreshScan();
   const sel=$("#sc-ord"); if(sel && S.scan.ord) sel.value=S.scan.ord;
 }
+function nextSimStage(o, mode){
+  if(mode!=="auto"){ const st=STAGES.find(s=>s.k===mode); for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===st.i-1) return st.i-1; return -1; }
+  const have=new Set(); for(let i=1;i<=o.sc.length;i++) have.add(boxStage(o,i));
+  for(const c of [0,1,3,4]) if(have.has(c)) return c;
+  return -1;
+}
 function simulateNext(){
   const o=S.scan.ord?ordOf(S.scan.ord):null; if(!o){ toast("Elige primero un pedido","bad"); return; }
-  const st=STAGES.find(s=>s.k===S.scan.mode);
-  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===st.i-1){ submitScan(boxCode(o.folio,i,o.sc.length)); return; }
-  toast(`Todas las cajas de ${o.folio} ya tienen el paso "${st.t}"`);
+  const s0=nextSimStage(o,S.scan.mode); if(s0<0){ toast(S.scan.mode==="auto"?`No hay cajas de ${o.folio} que puedan avanzar ahora (¿falta registrar la salida del viaje?)`:`Todas las cajas de ${o.folio} ya tienen ese paso`); return; }
+  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===s0){ submitScan(boxCode(o.folio,i,o.sc.length)); return; }
 }
 function simulateAll(){
   const o=S.scan.ord?ordOf(S.scan.ord):null; if(!o){ toast("Elige primero un pedido","bad"); return; }
-  const st=STAGES.find(s=>s.k===S.scan.mode); let k=0;
-  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===st.i-1){ const r=doScan(boxCode(o.folio,i,o.sc.length),S.scan.mode,{via:S.scan.via}); if(!r.ok){ S.scan.feed.unshift({...r,at:Date.now()}); beep(false); refreshScan(); return; } k++; }
-  S.scan.feed.unshift({ok:true,kind:"ok",msg:`${k} cajas de ${o.folio}: ${st.t}`,at:Date.now()}); beep(true); refreshScan();
+  const s0=nextSimStage(o,S.scan.mode); if(s0<0){ toast(`No hay cajas de ${o.folio} que puedan avanzar ahora`); return; }
+  let k=0, last=null;
+  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===s0){ const r=doScan(boxCode(o.folio,i,o.sc.length),S.scan.mode,{via:S.scan.via}); if(!r.ok){ S.scan.feed.unshift({...r,at:Date.now()}); beep(false); refreshScan(); return; } k++; last=r; }
+  S.scan.feed.unshift({ok:true,kind:"ok",o,msg:`${k} caja${k===1?"":"s"} de ${o.folio}: ${last?last.stage.t:""}`,at:Date.now()}); beep(true); refreshScan();
 }
 async function camStart(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast("Este navegador no permite usar la cámara aquí","bad"); return; }
@@ -65,17 +76,26 @@ async function camStart(){
 function camStop(){ clearInterval(camTimer); camTimer=null; if(camStream) camStream.getTracks().forEach(t=>t.stop()); camStream=null; S.scan.cam=false; }
 function attachCam(){ const v=$("#cam"); if(v&&camStream){ v.srcObject=camStream; v.play().catch(()=>{}); } }
 
+function scanResultCard(r){
+  const o=r.o, n=o?o.sc.length:0, c=o?stageCounts(o):null;
+  return `<div class="card" id="scan-result" style="margin-bottom:16px;border:3px solid ${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="ok-big" style="margin:0;background:${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">${r.ok?"✓":r.kind==="warn"?"!":"✕"}</div>
+    <div style="flex:1;min-width:220px"><div style="font-size:20px;font-weight:800">${esc(r.msg)}</div>${o?`<div class="mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>`:""}</div></div>
+    ${o?`<div style="margin-top:14px">${boxProgress(o,true)}</div><div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`:`<div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button></div>`}</div>`;
+}
 function modScan(){
   const m=S.scan, vias=DB.via.filter(v=>["abierto","cargando"].includes(v.status));
   if(m.mode==="cargada" && !m.via && vias.length) m.via=vias[0].id;
+  const rs=S.scanResult;
   const ords=scanOrders();
-  return `${ptitle("Escáner QR",`<span class="mut sm">Funciona con lector de mano (teclado), cámara del teléfono o simulación</span>`)}
+  return `${ptitle("Escáner QR",`<span class="mut sm">Lector de mano, cámara del teléfono o simulación</span>`)}
+  ${rs?scanResultCard(rs):""}
   <div class="grid g2">
     <div class="scanbox">
       <div class="mode">${SCAN_MODES.map(x=>`<button data-act="smode" data-arg="${x.k}" class="${m.mode===x.k?"on":""}">${esc(x.t)}<small>${esc(x.s)}</small></button>`).join("")}</div>
-      ${m.mode==="cargada"?`<div style="margin-bottom:12px"><label for="sc-via" style="color:#cfd8ea">Unidad / viaje</label><select id="sc-via" data-ch="svia">${vias.length?vias.map(v=>`<option value="${v.id}" ${m.via===v.id?"selected":""}>${esc(v.id)} · ${esc(v.unidad)} → ${esc(dest(v.dest).name)} (${esc(VIA_ST[v.status])})</option>`).join(""):`<option value="">No hay viajes abiertos — crea uno en Viajes</option>`}</select></div>`:""}
+      ${m.mode==="cargada"||m.mode==="auto"?`<div style="margin-bottom:12px"><label for="sc-via" style="color:#cfd8ea">${m.mode==="auto"?"Unidad para la carga (si no eliges, se usa el viaje abierto al destino de la caja)":"Unidad / viaje"}</label><select id="sc-via" data-ch="svia">${vias.length?vias.map(v=>`<option value="${v.id}" ${m.via===v.id?"selected":""}>${esc(v.id)} · ${esc(v.unidad)} → ${esc(dest(v.dest).name)} (${esc(VIA_ST[v.status])})</option>`).join(""):`<option value="">${m.mode==="auto"?"Automática":"No hay viajes abiertos — crea uno en Viajes"}</option>`}</select></div>`:""}
       <form data-form="scan"><label for="scan-in" style="color:#cfd8ea">Código de la caja</label>
-        <div style="display:flex;gap:8px"><input id="scan-in" placeholder="ALR|ALR-2026-0003|12|300" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn">Registrar</button></div></form>
+        <div style="display:flex;gap:8px"><input id="scan-in" placeholder="Código de la caja" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn">Registrar</button></div></form>
       <div class="chips" style="margin-top:12px">
         <button class="btn sec sm" data-act="${m.cam?"camoff":"camon"}">${m.cam?"Apagar cámara":"Escanear con cámara"}</button>
         <button class="btn sec sm" data-act="simnext">Simular siguiente caja</button>

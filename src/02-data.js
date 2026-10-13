@@ -72,7 +72,19 @@ function doScan(code, mode, ctx){
   if(o.cancelado) return {ok:false, kind:"bad", msg:`${o.folio} está cancelado`, code};
   if(p.n<1 || p.n>o.sc.length || p.total!==o.sc.length) return {ok:false, kind:"bad", msg:`Caja fuera de rango (${p.n}/${p.total})`, code};
   if(stIdx(o) < 1) return {ok:false, kind:"bad", msg:`${o.folio} aún no está confirmado por ALR`, code};
-  const st = STAGES.find(s=>s.k===mode), cur = boxStage(o,p.n);
+  const cur0 = boxStage(o,p.n);
+  if(mode==="auto"){
+    if(cur0>=5) return {ok:false, kind:"warn", msg:`Caja ${p.n}/${p.total} de ${o.folio} ya fue entregada`, code, o, n:p.n};
+    if(cur0===2) return {ok:false, kind:"warn", msg:`Caja ${p.n}/${p.total} de ${o.folio} ya está cargada${o.viaje?` en ${o.viaje}`:""}; falta registrar la salida de la unidad`, code, o, n:p.n};
+    mode = ["recibida","cargada","","llegada","entregada"][cur0];
+    if(mode==="cargada"){
+      let vv = ctx && ctx.via ? viaOf(ctx.via) : null;
+      if(!vv || vv.dest!==o.dest || !["abierto","cargando"].includes(vv.status)) vv = (o.viaje&&viaOf(o.viaje)&&["abierto","cargando"].includes(viaOf(o.viaje).status)?viaOf(o.viaje):null) || DB.via.find(x=>x.dest===o.dest&&["abierto","cargando"].includes(x.status));
+      if(!vv) return {ok:false, kind:"bad", msg:`No hay un viaje abierto a ${dest(o.dest).name}. Crea uno en Viajes.`, code, o, n:p.n};
+      ctx = {...(ctx||{}), via:vv.id};
+    }
+  }
+  const st = STAGES.find(s=>s.k===mode), cur = cur0;
   if(cur>=st.i) return {ok:false, kind:"warn", msg:`Caja ${p.n}/${p.total} de ${o.folio} ya estaba registrada (${STAGES[cur-1].t})`, code, o, n:p.n};
   if(cur < st.i-1) return {ok:false, kind:"bad", msg:`Caja ${p.n}/${p.total}: falta el paso "${STAGES[st.i-2]?STAGES[st.i-2].t:"previo"}"`, code, o, n:p.n};
   if(mode==="cargada"){
@@ -87,7 +99,7 @@ function doScan(code, mode, ctx){
   setBox(o,p.n,st.i);
   syncStatus(o);
   logEv("Escáner",st.t,`${o.folio} caja ${p.n}/${p.total}`); saveDB();
-  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n};
+  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n, stage:st};
 }
 function viajeFaltantes(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]<2) f++; }); return f; }
 function viajeCargadas(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]===2) f++; }); return f; }

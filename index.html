@@ -205,6 +205,7 @@ footer{padding:26px 16px;text-align:center;color:var(--mut);font-size:12px}
 .scanbox select{background:#fff;color:#14213d}
 .scanbox label{color:#cfd8ea}
 @media(max-width:600px){ .brand .pill{display:none} header.top .wrap{gap:8px} nav.tabs{gap:2px} nav.tabs button{padding:8px 7px;font-size:12.5px} .brand img{height:36px} }
+.mini{display:flex;gap:4px;margin:12px 0 4px}.mini span{flex:1;height:8px;border-radius:6px;background:#e3e8f0}.mini span.d{background:var(--ok)}.mini span.c{background:var(--c1)}
 
 </style>
 </head>
@@ -12638,7 +12639,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v5", APP_DATE = "8 oct 2026";
+const APP_VERSION = "v6", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -12658,6 +12659,8 @@ const DEFAULT_CFG = () => ({
   iva:16,
   vigencia:"Marzo 2026 – Marzo 2027",
   pin:"1234",
+  devPin:"lancer2026",
+  qrBase:"",
   desc:{ on:false, tiers:[{desde:50,pct:5},{desde:100,pct:8},{desde:200,pct:12},{desde:300,pct:19}] },
   destinos:[
     {id:"qro", name:"Querétaro",    transit:"1–2 días",    tMin:1, tMax:2,    ocurre:false, kgRate:2.15},
@@ -12680,7 +12683,7 @@ const DEFAULT_CFG = () => ({
   ]
 });
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
-(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc"].forEach(k=>{ if(!CFG[k]) CFG[k]=d[k]; });
+(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; });
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
 const saveCfg = () => store.set(KEY_CFG, CFG);
 
@@ -12696,15 +12699,16 @@ const stageColor = i => ["#dfe5f0","#9bb4e6","#4f78d4","#e0a21b","#b06ad8","#168
 
 /* ==================== Roles ==================== */
 const ROLES = {
-  admin:   {t:"Dirección ALR",      mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora"], who:"Acceso total"},
+  admin:   {t:"Dirección ALR",      mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora"], who:"Operación completa"},
   ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes"], who:"Pedidos, clientes y facturación"},
   almacen: {t:"Almacén",            mods:["dash","pedidos","scan","viajes","almacen","docs"], who:"Recepción, carga y viajes"},
-  operador:{t:"Operador de unidad", mods:["scan","viajes"], who:"Escáner y su viaje"}
+  operador:{t:"Operador de unidad", mods:["scan","viajes"], who:"Escáner y su viaje"},
+  dev:     {t:"LANCER · Desarrollo", mods:["dash","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora"], who:"Acceso interno de LANCER", hidden:true}
 };
 const MODS = {
   dash:{t:"Panel general",ic:"▦"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escáner QR",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
   almacen:{t:"Almacén",ic:"▣"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
-  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}
+  reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}
 };
 
 /* ==================== Cálculo de tarifa ==================== */
@@ -12760,9 +12764,12 @@ function qrSVG(text){
   const s = n+8;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${s} ${s}" shape-rendering="crispEdges"><rect width="${s}" height="${s}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
 }
-const boxCode = (folio,n,total) => `ALR|${folio}|${n}|${total}`;
+const qrBase = () => ((CFG.qrBase||"").trim() || location.href.split("#")[0]);
+/* El QR es una dirección: con la cámara normal del teléfono abre el sistema y la caja se registra sola. */
+const boxCode = (folio,n,total) => `${qrBase()}#s.${folio}.${n}.${total}`;
 function parseBox(code){
-  const m = String(code||"").trim().match(/^ALR\|([A-Za-z0-9-]+)\|(\d+)\|(\d+)$/);
+  const s = String(code||"").trim();
+  const m = s.match(/^ALR\|([A-Za-z0-9-]+)\|(\d+)\|(\d+)$/) || s.match(/#s\.([A-Za-z0-9-]+)\.(\d+)\.(\d+)\s*$/);
   return m ? {folio:m[1], n:+m[2], total:+m[3]} : null;
 }
 
@@ -12884,7 +12891,19 @@ function doScan(code, mode, ctx){
   if(o.cancelado) return {ok:false, kind:"bad", msg:`${o.folio} está cancelado`, code};
   if(p.n<1 || p.n>o.sc.length || p.total!==o.sc.length) return {ok:false, kind:"bad", msg:`Caja fuera de rango (${p.n}/${p.total})`, code};
   if(stIdx(o) < 1) return {ok:false, kind:"bad", msg:`${o.folio} aún no está confirmado por ALR`, code};
-  const st = STAGES.find(s=>s.k===mode), cur = boxStage(o,p.n);
+  const cur0 = boxStage(o,p.n);
+  if(mode==="auto"){
+    if(cur0>=5) return {ok:false, kind:"warn", msg:`Caja ${p.n}/${p.total} de ${o.folio} ya fue entregada`, code, o, n:p.n};
+    if(cur0===2) return {ok:false, kind:"warn", msg:`Caja ${p.n}/${p.total} de ${o.folio} ya está cargada${o.viaje?` en ${o.viaje}`:""}; falta registrar la salida de la unidad`, code, o, n:p.n};
+    mode = ["recibida","cargada","","llegada","entregada"][cur0];
+    if(mode==="cargada"){
+      let vv = ctx && ctx.via ? viaOf(ctx.via) : null;
+      if(!vv || vv.dest!==o.dest || !["abierto","cargando"].includes(vv.status)) vv = (o.viaje&&viaOf(o.viaje)&&["abierto","cargando"].includes(viaOf(o.viaje).status)?viaOf(o.viaje):null) || DB.via.find(x=>x.dest===o.dest&&["abierto","cargando"].includes(x.status));
+      if(!vv) return {ok:false, kind:"bad", msg:`No hay un viaje abierto a ${dest(o.dest).name}. Crea uno en Viajes.`, code, o, n:p.n};
+      ctx = {...(ctx||{}), via:vv.id};
+    }
+  }
+  const st = STAGES.find(s=>s.k===mode), cur = cur0;
   if(cur>=st.i) return {ok:false, kind:"warn", msg:`Caja ${p.n}/${p.total} de ${o.folio} ya estaba registrada (${STAGES[cur-1].t})`, code, o, n:p.n};
   if(cur < st.i-1) return {ok:false, kind:"bad", msg:`Caja ${p.n}/${p.total}: falta el paso "${STAGES[st.i-2]?STAGES[st.i-2].t:"previo"}"`, code, o, n:p.n};
   if(mode==="cargada"){
@@ -12899,7 +12918,7 @@ function doScan(code, mode, ctx){
   setBox(o,p.n,st.i);
   syncStatus(o);
   logEv("Escáner",st.t,`${o.folio} caja ${p.n}/${p.total}`); saveDB();
-  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n};
+  return {ok:true, kind:"ok", msg:`${st.t}: caja ${p.n}/${p.total} de ${o.folio}`, code, o, n:p.n, stage:st};
 }
 function viajeFaltantes(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]<2) f++; }); return f; }
 function viajeCargadas(v){ let f=0; v.ords.forEach(fo=>{ const o=ordOf(fo); if(o) for(let i=0;i<o.sc.length;i++) if(+o.sc[i]===2) f++; }); return f; }
@@ -13139,7 +13158,7 @@ const FAC_ST = {borrador:"Borrador", emitida:"Emitida", pagada:"Pagada", vencida
 /* ==================== Estado de interfaz ==================== */
 const S = { view:"cotizar", mod:"dash", modals:[], drawer:null, done:null, track:"", lab:null, labN:48, back:null,
   fEstado:"todos", fDest:"todos", fq:"", fCliQ:"", ftab:"fac", docTab:"rem", cfgTab:"marca", repDays:30, logQ:"", vtab:"activos", cliSel:null,
-  scan:{mode:"recibida", via:"", ord:"", feed:[], cam:false} };
+  scan:{mode:"auto", via:"", ord:"", feed:[], cam:false}, scanResult:null, pendingScan:null };
 let Q = null;
 const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, obs:"" });
 Q = newQ();
@@ -13148,8 +13167,8 @@ const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id
 /* ---- modales y cajón ---- */
 function openModal(m){ S.modals.push(m); renderOverlay(); }
 function closeModal(){ S.modals.pop(); renderOverlay(); }
-function openDoc(html, title){
-  openModal({title, wide:true, html:`<div class="sheet" id="doc-sheet">${html}</div>`, actions:SANDBOX?"":`<button class="btn sm" data-act="printdoc">Imprimir / PDF</button>`});
+function openDoc(html, title, extra){
+  openModal({title, wide:true, html:`<div class="sheet" id="doc-sheet">${html}</div>${extra||""}`, actions:SANDBOX?"":`<button class="btn sm" data-act="printdoc">Imprimir / PDF</button>`});
 }
 function renderOverlay(){
   let h = "";
@@ -13395,10 +13414,11 @@ function viewSistema(){
   if(!ROLE) return `<div class="wrap" style="padding:36px 16px"><div class="card" style="max-width:520px;margin:0 auto">
     <h2 style="font-size:24px">Sistema ALR</h2><p class="mut">Operación, almacén, facturación y control de envíos. Elige tu perfil para entrar.</p>
     <form data-form="login">
-      <div class="grid" style="gap:8px;margin-bottom:14px">${Object.entries(ROLES).map(([k,r],i)=>`<label class="chk"><input type="radio" name="role" value="${k}" ${i===0?"checked":""}><span><b>${esc(r.t)}</b><br><span class="mut sm">${esc(r.who)}</span></span></label>`).join("")}</div>
+      <div class="grid" style="gap:8px;margin-bottom:14px">${Object.entries(ROLES).filter(([k,r])=>!r.hidden).map(([k,r],i)=>`<label class="chk"><input type="radio" name="role" value="${k}" ${i===0?"checked":""}><span><b>${esc(r.t)}</b><br><span class="mut sm">${esc(r.who)}</span></span></label>`).join("")}</div>
       <label for="pin">PIN</label><input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off">
       <button class="btn" style="width:100%;margin-top:12px">Entrar</button>
     </form>
+    ${S.pendingScan?`<div class="note info sm" style="margin-top:12px">Inicia sesión para registrar la caja que escaneaste.</div>`:""}
     <div class="mut sm" style="margin-top:12px">Demo: PIN <b>${esc(CFG.pin)}</b>. Cada perfil ve solo los módulos que le corresponden.</div></div></div>`;
   if(!allowed(S.mod)) S.mod = ROLES[ROLE].mods[0];
   const porConf = DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
@@ -13407,6 +13427,22 @@ function viewSistema(){
   const nav = ROLES[ROLE].mods.map(m=>`<button class="nv ${S.mod===m?"on":""}" data-act="mod" data-arg="${m}"><span>${MODS[m].ic}</span>${MODS[m].t}${nb[m]?`<span class="n">${nb[m]}</span>`:""}</button>`).join("");
   const body = {dash:modDash,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
   return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}</aside><div class="main">${body}</div></div>`;
+}
+/* ---- resumen de envío (se reutiliza en facturas, guías, remisiones y escáner) ---- */
+function envioLinea(o){
+  if(o.cancelado) return "Cancelado";
+  const n=o.sc.length, rec=n-stageCounts(o)[0], e=eta(o.dest,o.createdAt);
+  if(o.status==="entregado") return `Entregado${o.pod?` a ${o.pod.nombre}`:""}`;
+  return `${stLabel(o.status)} · ${rec}/${n} cajas${e?` · llega ${etaText(e)}`:""}`;
+}
+function miniSteps(o){ const cur=stIdx(o); return `<div class="mini">${CFG.steps.map((s,i)=>`<span class="${i<cur||(i===cur&&s.k==="entregado")?"d":i===cur?"c":""}" title="${esc(s.t)}"></span>`).join("")}</div>`; }
+function envioResumen(o){
+  const e=eta(o.dest,o.createdAt), last=o.history[o.history.length-1];
+  return `<div class="card flat" style="margin-top:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b>${esc(o.folio)}</b> ${badge(o)}<div class="sm mut">${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> · Guía ${esc(o.guia||"—")} · Remisión ${esc(o.rem||"—")}</div></div>
+    <div class="r sm">${e&&o.status!=="entregado"&&!o.cancelado?`Llega <b>${esc(etaText(e))}</b>`:""}${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}</div></div>
+    ${miniSteps(o)}<div class="sm" style="margin:6px 0">${esc(stLabel(o.status))}${last&&last.note?` · ${esc(last.note)}`:""} <span class="mut">(${fdate(last.at)})</span></div>
+    ${boxProgress(o,true)}${o.pod?`<div class="note ok sm" style="margin-top:8px">Entregado a ${esc(o.pod.nombre)}${o.pod.id?` · ${esc(o.pod.id)}`:""} · ${fdate(o.pod.at)}</div>`:""}
+    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button></div></div>`;
 }
 const ptitle = (t,right) => `<div class="ptitle"><h2>${esc(t)}</h2><div style="margin-left:auto" class="chips">${right||""}</div></div>`;
 
@@ -13552,6 +13588,7 @@ function drawerHTML(o){
 /* ==================== Escáner QR ==================== */
 let camStream=null, camTimer=null, lastCode="", lastAt=0;
 const SCAN_MODES = [
+  {k:"auto",     t:"Automático",         s:"Cada escaneo avanza la caja al siguiente paso"},
   {k:"recibida", t:"Recibir en almacén", s:"Llega la paquetería"},
   {k:"cargada",  t:"Cargar a unidad",    s:"Se sube al camión"},
   {k:"llegada",  t:"Llegada a plaza",    s:"Se descarga en destino"},
@@ -13561,21 +13598,24 @@ function scanOrders(){ return DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1&&o.stat
 function scanFeedHTML(){
   const f=S.scan.feed;
   if(!f.length) return `<div class="mut sm">Aún no hay escaneos. Escanea una etiqueta, escribe el código o usa "Simular siguiente caja".</div>`;
-  return f.slice(0,14).map(r=>`<div class="it ${r.kind}"><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.75">${fdate(r.at)}${r.code?` · <b>${esc(r.code)}</b>`:""}</div></div></div>`).join("");
+  return f.slice(0,14).map(r=>`<div class="it ${r.kind}" ${r.o?`data-act="open" data-arg="${esc(r.o.folio)}" style="cursor:pointer" title="Ver envío completo"`:""}><span>${r.ok?"✓":r.kind==="warn"?"!":"✕"}</span><div style="min-width:0"><div>${esc(r.msg)}</div><div class="xs" style="opacity:.75">${fdate(r.at)}${r.o?` · toca para ver el envío`:""}</div></div></div>`).join("");
 }
 function scanReconHTML(){
-  const st=STAGES.find(s=>s.k===S.scan.mode);
+  const auto = S.scan.mode==="auto";
+  const st=auto?null:STAGES.find(s=>s.k===S.scan.mode);
   const o=S.scan.ord?ordOf(S.scan.ord):null;
   let h="";
-  if(S.scan.mode==="cargada" && S.scan.via){ const v=viaOf(S.scan.via); if(v){ const f=viajeFaltantes(v), cg=viajeCargadas(v); const tot=v.ords.reduce((s,fo)=>s+(ordOf(fo)?ordOf(fo).sc.length:0),0);
+  if((S.scan.mode==="cargada"||auto) && S.scan.via){ const v=viaOf(S.scan.via); if(v&&["abierto","cargando"].includes(v.status)){ const f=viajeFaltantes(v), cg=viajeCargadas(v); const tot=v.ords.reduce((s,fo)=>s+(ordOf(fo)?ordOf(fo).sc.length:0),0);
     h+=`<div class="note ${f?"info":"ok"} sm" style="margin-bottom:12px"><b>${esc(v.id)} · ${esc(v.unidad)}</b> → ${esc(dest(v.dest).name)}: ${cg} cajas cargadas${tot?` de ${tot} asignadas`:""}${f?` · faltan ${f}`:" · carga completa ✓"}</div>`; } }
-  if(!o) return h+`<div class="mut sm">Elige un pedido para ver la conciliación de sus cajas (${esc(st.t)}).</div>`;
-  const n=o.sc.length, c=stageCounts(o), done=atLeast(o,st.i), falt=faltantesTxt(o,st.i);
-  return h+`<div class="h2" style="margin-bottom:6px">${esc(o.folio)} <span class="pill ${done===n?"ok":"warn"}">${done} de ${n} · ${esc(st.t)}</span></div>
+  if(!o) return h+`<div class="mut sm">Elige un pedido (o escanea una caja) para ver la conciliación de sus cajas.</div>`;
+  const n=o.sc.length, c=stageCounts(o), done=auto?n-c[0]:atLeast(o,st.i), falt=faltantesTxt(o,auto?1:st.i);
+  const etiqueta = auto?"recibidas en almacén":st.t;
+  return h+`<div class="h2" style="margin-bottom:6px">${esc(o.folio)} <span class="pill ${done===n?"ok":"warn"}">${done} de ${n} · ${esc(etiqueta)}</span></div>
     <div class="mut sm" style="margin-bottom:8px">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>
     ${boxProgress(o,false)}
     ${done===n?`<div class="note ok sm" style="margin-top:10px">Conciliación completa: entraron las ${n} cajas ✓</div>`:`<div class="note sm" style="margin-top:10px"><b>Faltan ${n-done} cajas:</b> ${esc(falt)}</div>`}
-    ${n<=400?`<div class="boxes">${Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join("")}</div>`:""}`;
+    ${n<=400?`<div class="boxes">${Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join("")}</div>`:""}
+    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`;
 }
 function refreshScan(){ const a=$("#scan-feed"); if(a) a.innerHTML=scanFeedHTML(); const b=$("#scan-recon"); if(b) b.innerHTML=scanReconHTML(); }
 function submitScan(code){
@@ -13583,20 +13623,27 @@ function submitScan(code){
   S.scan.feed.unshift({...res, at:Date.now()}); if(S.scan.feed.length>40) S.scan.feed.pop();
   if(res.o && res.kind!=="bad" && !S.scan.ord) S.scan.ord=res.o.folio;
   if(res.o && res.ok) S.scan.ord=res.o.folio;
+  S.scanResult=null; const rc=$("#scan-result"); if(rc) rc.remove();
   beep(res.ok); refreshScan();
   const sel=$("#sc-ord"); if(sel && S.scan.ord) sel.value=S.scan.ord;
 }
+function nextSimStage(o, mode){
+  if(mode!=="auto"){ const st=STAGES.find(s=>s.k===mode); for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===st.i-1) return st.i-1; return -1; }
+  const have=new Set(); for(let i=1;i<=o.sc.length;i++) have.add(boxStage(o,i));
+  for(const c of [0,1,3,4]) if(have.has(c)) return c;
+  return -1;
+}
 function simulateNext(){
   const o=S.scan.ord?ordOf(S.scan.ord):null; if(!o){ toast("Elige primero un pedido","bad"); return; }
-  const st=STAGES.find(s=>s.k===S.scan.mode);
-  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===st.i-1){ submitScan(boxCode(o.folio,i,o.sc.length)); return; }
-  toast(`Todas las cajas de ${o.folio} ya tienen el paso "${st.t}"`);
+  const s0=nextSimStage(o,S.scan.mode); if(s0<0){ toast(S.scan.mode==="auto"?`No hay cajas de ${o.folio} que puedan avanzar ahora (¿falta registrar la salida del viaje?)`:`Todas las cajas de ${o.folio} ya tienen ese paso`); return; }
+  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===s0){ submitScan(boxCode(o.folio,i,o.sc.length)); return; }
 }
 function simulateAll(){
   const o=S.scan.ord?ordOf(S.scan.ord):null; if(!o){ toast("Elige primero un pedido","bad"); return; }
-  const st=STAGES.find(s=>s.k===S.scan.mode); let k=0;
-  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===st.i-1){ const r=doScan(boxCode(o.folio,i,o.sc.length),S.scan.mode,{via:S.scan.via}); if(!r.ok){ S.scan.feed.unshift({...r,at:Date.now()}); beep(false); refreshScan(); return; } k++; }
-  S.scan.feed.unshift({ok:true,kind:"ok",msg:`${k} cajas de ${o.folio}: ${st.t}`,at:Date.now()}); beep(true); refreshScan();
+  const s0=nextSimStage(o,S.scan.mode); if(s0<0){ toast(`No hay cajas de ${o.folio} que puedan avanzar ahora`); return; }
+  let k=0, last=null;
+  for(let i=1;i<=o.sc.length;i++) if(boxStage(o,i)===s0){ const r=doScan(boxCode(o.folio,i,o.sc.length),S.scan.mode,{via:S.scan.via}); if(!r.ok){ S.scan.feed.unshift({...r,at:Date.now()}); beep(false); refreshScan(); return; } k++; last=r; }
+  S.scan.feed.unshift({ok:true,kind:"ok",o,msg:`${k} caja${k===1?"":"s"} de ${o.folio}: ${last?last.stage.t:""}`,at:Date.now()}); beep(true); refreshScan();
 }
 async function camStart(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast("Este navegador no permite usar la cámara aquí","bad"); return; }
@@ -13616,17 +13663,26 @@ async function camStart(){
 function camStop(){ clearInterval(camTimer); camTimer=null; if(camStream) camStream.getTracks().forEach(t=>t.stop()); camStream=null; S.scan.cam=false; }
 function attachCam(){ const v=$("#cam"); if(v&&camStream){ v.srcObject=camStream; v.play().catch(()=>{}); } }
 
+function scanResultCard(r){
+  const o=r.o, n=o?o.sc.length:0, c=o?stageCounts(o):null;
+  return `<div class="card" id="scan-result" style="margin-bottom:16px;border:3px solid ${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div class="ok-big" style="margin:0;background:${r.ok?"var(--ok)":r.kind==="warn"?"#e0a21b":"var(--bad)"}">${r.ok?"✓":r.kind==="warn"?"!":"✕"}</div>
+    <div style="flex:1;min-width:220px"><div style="font-size:20px;font-weight:800">${esc(r.msg)}</div>${o?`<div class="mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)} (${esc(dest(o.dest).name)})</div>`:""}</div></div>
+    ${o?`<div style="margin-top:14px">${boxProgress(o,true)}</div><div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`:`<div class="chips noprint" style="margin-top:12px"><button class="btn" data-act="scanagain">Escanear otra caja</button></div>`}</div>`;
+}
 function modScan(){
   const m=S.scan, vias=DB.via.filter(v=>["abierto","cargando"].includes(v.status));
   if(m.mode==="cargada" && !m.via && vias.length) m.via=vias[0].id;
+  const rs=S.scanResult;
   const ords=scanOrders();
-  return `${ptitle("Escáner QR",`<span class="mut sm">Funciona con lector de mano (teclado), cámara del teléfono o simulación</span>`)}
+  return `${ptitle("Escáner QR",`<span class="mut sm">Lector de mano, cámara del teléfono o simulación</span>`)}
+  ${rs?scanResultCard(rs):""}
   <div class="grid g2">
     <div class="scanbox">
       <div class="mode">${SCAN_MODES.map(x=>`<button data-act="smode" data-arg="${x.k}" class="${m.mode===x.k?"on":""}">${esc(x.t)}<small>${esc(x.s)}</small></button>`).join("")}</div>
-      ${m.mode==="cargada"?`<div style="margin-bottom:12px"><label for="sc-via" style="color:#cfd8ea">Unidad / viaje</label><select id="sc-via" data-ch="svia">${vias.length?vias.map(v=>`<option value="${v.id}" ${m.via===v.id?"selected":""}>${esc(v.id)} · ${esc(v.unidad)} → ${esc(dest(v.dest).name)} (${esc(VIA_ST[v.status])})</option>`).join(""):`<option value="">No hay viajes abiertos — crea uno en Viajes</option>`}</select></div>`:""}
+      ${m.mode==="cargada"||m.mode==="auto"?`<div style="margin-bottom:12px"><label for="sc-via" style="color:#cfd8ea">${m.mode==="auto"?"Unidad para la carga (si no eliges, se usa el viaje abierto al destino de la caja)":"Unidad / viaje"}</label><select id="sc-via" data-ch="svia">${vias.length?vias.map(v=>`<option value="${v.id}" ${m.via===v.id?"selected":""}>${esc(v.id)} · ${esc(v.unidad)} → ${esc(dest(v.dest).name)} (${esc(VIA_ST[v.status])})</option>`).join(""):`<option value="">${m.mode==="auto"?"Automática":"No hay viajes abiertos — crea uno en Viajes"}</option>`}</select></div>`:""}
       <form data-form="scan"><label for="scan-in" style="color:#cfd8ea">Código de la caja</label>
-        <div style="display:flex;gap:8px"><input id="scan-in" placeholder="ALR|ALR-2026-0003|12|300" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn">Registrar</button></div></form>
+        <div style="display:flex;gap:8px"><input id="scan-in" placeholder="Código de la caja" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn">Registrar</button></div></form>
       <div class="chips" style="margin-top:12px">
         <button class="btn sec sm" data-act="${m.cam?"camoff":"camon"}">${m.cam?"Apagar cámara":"Escanear con cámara"}</button>
         <button class="btn sec sm" data-act="simnext">Simular siguiente caja</button>
@@ -13723,7 +13779,7 @@ function openCliente(id){
   openModal({title:id==="new"?"Nuevo cliente":`${c.razon}`, wide:true, key:"cli:"+id,
     html:`${s?`<div class="row4" style="margin-bottom:14px">${[["Pedidos",s.pedidos],["Cajas",s.cajas],["Facturado",money0(s.facturado)],["Saldo",money0(s.saldo)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="xs mut">${a}</div><b class="mono">${b}</b></div>`).join("")}</div>`:""}
     ${cliForm(c)}
-    ${s&&fs.length?`<div class="h2" style="margin-top:18px">Facturas y XML</div>${fs.map(f=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><span class="sm"><b>${esc(f.id)}</b> · ${fday(f.fecha)} · ${money(f.total)} <span class="pill ${facEstado(f)==="pagada"?"ok":facEstado(f)==="vencida"?"bad":"warn"}">${esc(FAC_ST[facEstado(f)])}</span></span><span class="chips"><button class="btn sec sm" data-act="verfac" data-arg="${esc(f.id)}">Ver</button><button class="btn sec sm" data-act="xmlfac" data-arg="${esc(f.id)}">XML</button></span></div>`).join("")}
+    ${s&&fs.length?`<div class="h2" style="margin-top:18px">Facturas y XML</div>${fs.map(f=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><span class="sm"><b>${esc(f.id)}</b> · ${fday(f.fecha)} · ${money(f.total)} <span class="pill ${facEstado(f)==="pagada"?"ok":facEstado(f)==="vencida"?"bad":"warn"}">${esc(FAC_ST[facEstado(f)])}</span></span><span class="chips"><button class="btn sec sm" data-act="verfac" data-arg="${esc(f.id)}">Ver</button><button class="btn sec sm" data-act="xmlfac" data-arg="${esc(f.id)}">XML</button>${f.ords[0]?`<button class="btn sec sm" data-act="open" data-arg="${esc(f.ords[0])}">Envío</button>`:""}</span></div>`).join("")}
       <button class="btn sec sm" style="margin-top:10px" data-act="xmlcli" data-arg="${esc(c.id)}">Descargar todos los XML (.zip)</button>`:""}
     ${s&&os.length?`<div class="h2" style="margin-top:18px">Pedidos</div>${os.slice(0,12).map(o=>`<div class="sm" style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid var(--line);cursor:pointer" data-act="open" data-arg="${esc(o.folio)}"><span><b>${esc(o.folio)}</b> · ${esc(dest(o.dest).name)} · ${o.totals.piezas} cajas</span>${badge(o)}</div>`).join("")}`:""}`,
     actions:`<button class="btn sm" data-act="savecli" data-arg="${esc(id)}">Guardar cliente</button>`});
@@ -13738,8 +13794,8 @@ function modFact(){
     <div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.ftab===k?"on":""}" data-act="ftab" data-arg="${k}">${t}</button>`).join("")}</div>`;
   if(S.ftab==="pend"){
     const p=pendientesFacturar();
-    return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Guía</th><th>Estatus</th><th class="r">Subtotal</th><th class="r">Total</th><th></th></tr></thead><tbody>
-    ${p.map(o=>`<tr><td><b>${esc(o.folio)}</b></td><td>${esc(cliOf(o.cli).razon)}</td><td class="sm">${esc(o.guia)}</td><td>${badge(o)}</td><td class="r mono">${money(o.totals.subtotal)}</td><td class="r mono">${money(o.totals.total)}</td><td class="r"><button class="btn sm" data-act="facturar" data-arg="${esc(o.folio)}">Facturar</button></td></tr>`).join("")||`<tr><td colspan="7" class="mut c" style="padding:24px">No hay pedidos pendientes de facturar.</td></tr>`}</tbody></table></div></div>`;
+    return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Guía</th><th>Estado del envío</th><th class="r">Total</th><th></th></tr></thead><tbody>
+    ${p.map(o=>`<tr><td><b>${esc(o.folio)}</b></td><td>${esc(cliOf(o.cli).razon)}</td><td class="sm">${esc(o.guia)}</td><td class="sm">${badge(o)}<div class="mut" style="margin-top:3px">${esc(envioLinea(o))}</div></td><td class="r mono">${money(o.totals.total)}</td><td class="r"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Envío</button> <button class="btn sm" data-act="facturar" data-arg="${esc(o.folio)}">Facturar</button></td></tr>`).join("")||`<tr><td colspan="6" class="mut c" style="padding:24px">No hay pedidos pendientes de facturar.</td></tr>`}</tbody></table></div></div>`;
   }
   if(S.ftab==="cob"){
     const abiertas=DB.fac.filter(f=>["emitida","vencida"].includes(facEstado(f))&&facSaldo(f)>0.5);
@@ -13753,14 +13809,15 @@ function modFact(){
   }
   const fl=DB.fac;
   return head+`<div class="card" style="padding:16px"><div class="toolbar"><span class="mut sm">${fl.length} factura(s)</span><button class="btn sec sm" style="margin-left:auto" data-act="xmlall">Descargar todos los XML (.zip)</button></div>
-  <div class="scroll"><table><thead><tr><th>Factura</th><th>Cliente</th><th>Fecha</th><th>Vence</th><th class="r">Total</th><th class="r">Saldo</th><th>Estado</th><th></th></tr></thead><tbody>
-  ${fl.map(f=>{ const st=facEstado(f); return `<tr class="click" data-act="verfac" data-arg="${esc(f.id)}"><td><b>${esc(f.id)}</b></td><td>${esc(cliOf(f.cli).razon)}</td><td class="sm">${fday(f.fecha)}</td><td class="sm">${f.estado==="borrador"?"—":fday(f.venc)}</td><td class="r mono">${money(f.total)}</td><td class="r mono">${st==="pagada"||st==="cancelada"?"—":money(facSaldo(f))}</td><td><span class="pill ${st==="pagada"?"ok":st==="vencida"?"bad":st==="borrador"?"":"warn"}">${esc(FAC_ST[st])}</span></td><td class="r"><button class="btn sec sm" data-act="xmlfac" data-arg="${esc(f.id)}">XML</button></td></tr>`; }).join("")||`<tr><td colspan="8" class="mut c" style="padding:24px">Aún no hay facturas.</td></tr>`}</tbody></table></div></div>`;
+  <div class="scroll"><table><thead><tr><th>Factura</th><th>Pedido</th><th>Cliente</th><th>Estado del envío</th><th class="r">Total</th><th class="r">Saldo</th><th>Cobro</th><th></th></tr></thead><tbody>
+  ${fl.map(f=>{ const st=facEstado(f), os=f.ords.map(ordOf).filter(Boolean), o=os[0]; return `<tr class="click" data-act="verfac" data-arg="${esc(f.id)}"><td><b>${esc(f.id)}</b><div class="xs mut">${fday(f.fecha)}</div></td><td>${o?`<b>${esc(o.folio)}</b>${os.length>1?` <span class="pill">+${os.length-1}</span>`:""}<div style="margin-top:3px">${badge(o)}</div>`:"—"}</td><td>${esc(cliOf(f.cli).razon)}</td><td class="sm">${o?esc(envioLinea(o)):"—"}</td><td class="r mono">${money(f.total)}</td><td class="r mono">${st==="pagada"||st==="cancelada"?"—":money(facSaldo(f))}</td><td><span class="pill ${st==="pagada"?"ok":st==="vencida"?"bad":st==="borrador"?"":"warn"}">${esc(FAC_ST[st])}</span>${f.estado==="borrador"||st==="pagada"||st==="cancelada"?"":`<div class="xs mut" style="margin-top:3px">vence ${fday(f.venc)}</div>`}</td><td class="r"><div class="chips" style="justify-content:flex-end"><button class="btn sec sm" data-act="verfac" data-arg="${esc(f.id)}">Factura</button> <button class="btn sec sm" data-act="xmlfac" data-arg="${esc(f.id)}">XML</button>${o?`<button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Envío</button>`:""}</div></td></tr>`; }).join("")||`<tr><td colspan="8" class="mut c" style="padding:24px">Aún no hay facturas.</td></tr>`}</tbody></table></div></div>`;
 }
 function openFac(id){
   const f=facOf(id); if(!f) return; const st=facEstado(f), saldo=facSaldo(f);
   const pagos=f.pagos.map(p=>`<div class="sm" style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line)"><span>${fday(p.at)} · ${esc(p.ref||"")}</span><b>${money(p.monto)}</b></div>`).join("");
   openModal({title:`Factura ${f.id}`, wide:true, key:"fac:"+id,
-    html:`<div class="sheet">${factDoc(f)}</div>
+    html:`<div class="sheet" id="doc-sheet">${factDoc(f)}</div>
+    <div class="noprint"><div class="h2" style="margin:16px 0 0">Envío${f.ords.length>1?"s":""} de esta factura</div>${f.ords.map(ordOf).filter(Boolean).map(envioResumen).join("")||`<div class="mut sm">Sin pedidos ligados.</div>`}</div>
     <div class="grid g2" style="margin-top:14px">
       <div><div class="h2" style="margin-bottom:6px">Pagos</div>${pagos||`<div class="mut sm">Sin pagos registrados.</div>`}<div class="sm" style="margin-top:6px">Saldo: <b>${money(saldo)}</b></div></div>
       ${["emitida","vencida"].includes(st)?`<div><div class="h2" style="margin-bottom:6px">Registrar pago</div><div class="row3"><div><label for="pg-m">Monto</label><input id="pg-m" type="number" step="0.01" value="${saldo.toFixed(2)}"></div><div><label for="pg-f">Forma</label><select id="pg-f"><option value="03">03 Transferencia</option><option value="01">01 Efectivo</option><option value="02">02 Cheque</option><option value="04">04 Tarjeta</option></select></div><div><label for="pg-r">Referencia</label><input id="pg-r" placeholder="SPEI…"></div></div><button class="btn ok sm" style="margin-top:8px" data-act="pagar" data-arg="${esc(f.id)}">Registrar pago</button></div>`:""}
@@ -13780,9 +13837,9 @@ function modDocs(){
   const head=`${ptitle("Guías y remisiones")}<div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.docTab===k?"on":""}" data-act="dtab" data-arg="${k}">${t}</button>`).join("")}</div>`;
   if(S.docTab==="mani") return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>Viaje</th><th>Unidad</th><th>Operador</th><th>Destino</th><th class="r">Pedidos</th><th>Estado</th><th></th></tr></thead><tbody>${DB.via.map(v=>`<tr><td><b>${esc(v.id)}</b></td><td>${esc(v.unidad)}</td><td>${esc(v.operador)}</td><td>${esc(dest(v.dest).name)}</td><td class="r">${v.ords.length}</td><td>${esc(VIA_ST[v.status])}</td><td class="r"><button class="btn sec sm" data-act="doc" data-arg="mani|${v.id}">Abrir</button></td></tr>`).join("")}</tbody></table></div></div>`;
   const os=DB.ord.filter(o=>!o.cancelado&&stIdx(o)>=1);
-  return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>${S.docTab==="rem"?"Remisión":"Guía"}</th><th>Pedido</th><th>Cliente</th><th>Destinatario</th><th>Fecha</th><th>Entrega</th><th></th></tr></thead><tbody>
-  ${os.map(o=>`<tr><td><b>${esc(S.docTab==="rem"?o.rem:o.guia)}</b></td><td>${esc(o.folio)}</td><td>${esc(o.sol.empresa||o.sol.nombre)}</td><td>${esc(o.dst.nombre)}</td><td class="sm">${fday(o.createdAt)}</td><td>${o.pod?`<span class="pill ok">Firmada · ${esc(o.pod.nombre)}</span>`:`<span class="pill warn">Pendiente</span>`}</td>
-  <td class="r"><button class="btn sec sm" data-act="doc" data-arg="${S.docTab}|${esc(o.folio)}">Abrir</button> <button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">QR</button></td></tr>`).join("")||`<tr><td colspan="7" class="mut c" style="padding:24px">Sin documentos todavía. Confirma un pedido para generarlos.</td></tr>`}</tbody></table></div></div>`;
+  return head+`<div class="card" style="padding:16px"><div class="scroll"><table><thead><tr><th>${S.docTab==="rem"?"Remisión":"Guía"}</th><th>Pedido</th><th>Cliente</th><th>Destinatario</th><th>Estado del envío</th><th>Firma</th><th></th></tr></thead><tbody>
+  ${os.map(o=>`<tr><td><b>${esc(S.docTab==="rem"?o.rem:o.guia)}</b></td><td>${esc(o.folio)}</td><td>${esc(o.sol.empresa||o.sol.nombre)}</td><td>${esc(o.dst.nombre)}</td><td class="sm">${badge(o)}<div class="mut" style="margin-top:3px">${esc(envioLinea(o))}</div></td><td>${o.pod?`<span class="pill ok">Firmada · ${esc(o.pod.nombre)}</span>`:`<span class="pill warn">Pendiente</span>`}</td>
+  <td class="r" style="white-space:nowrap"><button class="btn sec sm" data-act="doc" data-arg="${S.docTab}|${esc(o.folio)}">Documento</button> <button class="btn sm" data-act="open" data-arg="${esc(o.folio)}">Envío</button> <button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">QR</button></td></tr>`).join("")||`<tr><td colspan="7" class="mut c" style="padding:24px">Sin documentos todavía. Confirma un pedido para generarlos.</td></tr>`}</tbody></table></div></div>`;
 }
 
 /* ==================== Reportes ==================== */
@@ -13839,11 +13896,11 @@ function modConfig(){
     <div class="scroll" style="margin-top:14px"><table><thead><tr><th>Desde (cajas)</th><th>Descuento %</th><th></th></tr></thead><tbody>${CFG.desc.tiers.map((t,i)=>`<tr><td><input aria-label="Desde" type="number" data-in="cfgarr" data-num="1" data-arg="desc.tiers|${i}|desde" value="${t.desde}" style="width:110px"></td><td><input aria-label="Porcentaje" type="number" step="0.5" data-in="cfgarr" data-num="1" data-arg="desc.tiers|${i}|pct" value="${t.pct}" style="width:110px"></td><td><button class="x" data-act="deltier" data-arg="${i}" aria-label="Quitar">×</button></td></tr>`).join("")}</tbody></table></div>
     <button class="btn sec sm" data-act="addtier" style="margin-top:10px">+ Agregar escalón</button>
     <div class="note sm" style="margin-top:16px">Los escalones son de ejemplo y están apagados por defecto: ALR confirmó que existe descuento por volumen pero no entregó su tabla. El único dato firme es 300 cajas de 30 kg a Monterrey en $26,750 por caja de 43 pies completa, 19% abajo de la tarifa lineal.</div>`;
-  if(S.cfgTab==="reglas") body=`<div class="row3">${inp("cg-o","Origen","origen",CFG.origen)}${inp("cg-m","Mínimo por embarque ($)","minimo",CFG.minimo,'type="number" data-num="1"')}${inp("cg-i","IVA (%)","iva",CFG.iva,'type="number" data-num="1"')}${inp("cg-v","Factor volumétrico (kg/m³)","volFactor",CFG.volFactor,'type="number" data-num="1"')}${inp("cg-g","Vigencia de tarifa","vigencia",CFG.vigencia)}${inp("cg-p","PIN del sistema","pin",CFG.pin)}</div>
+  if(S.cfgTab==="reglas") body=`<div class="row3">${inp("cg-o","Origen","origen",CFG.origen)}${inp("cg-m","Mínimo por embarque ($)","minimo",CFG.minimo,'type="number" data-num="1"')}${inp("cg-i","IVA (%)","iva",CFG.iva,'type="number" data-num="1"')}${inp("cg-v","Factor volumétrico (kg/m³)","volFactor",CFG.volFactor,'type="number" data-num="1"')}${inp("cg-g","Vigencia de tarifa","vigencia",CFG.vigencia)}${inp("cg-p","PIN de ALR (perfiles de la empresa)","pin",CFG.pin)}${inp("cg-dp","PIN de LANCER (acceso a Configuración)","devPin",CFG.devPin)}${inp("cg-q","Dirección base para los QR (vacío = la de esta página)","qrBase",CFG.qrBase||"",'placeholder="https://rlc-hash.github.io/LANCERALR/"')}</div>
     <div class="note sm" style="margin-top:16px">Factor 556 kg/m³ = inferido de “una tarima = 1,000 kg” ÷ 1.80 m³. <b>No es dato de ALR</b>: confirmar. Si la tarima mide 1.20 m de alto, sería 694. Combustible: no aplica.</div>`;
   if(S.cfgTab==="empresa") body=`<div class="row2">${inp("ce-r","Razón social","empresa.razon",E.razon)}${inp("ce-f","RFC emisor","empresa.rfc",E.rfc,'style="text-transform:uppercase"')}${inp("ce-g","Régimen fiscal (clave)","empresa.regimen",E.regimen)}${inp("ce-c","C.P. de expedición","empresa.cp",E.cp)}${inp("ce-d","Dirección","empresa.dir",E.dir)}${inp("ce-s","Serie de facturas","empresa.serie",E.serie)}${inp("ce-t","Teléfono","empresa.tel",E.tel)}${inp("ce-e","Correo","empresa.correo",E.correo)}</div>
     <div class="note sm" style="margin-top:16px">El RFC y la razón social de ejemplo se sustituyen por los reales de ALR. Para timbrar se necesita además el certificado de sello digital (CSD) y un PAC; eso se conecta en la fase de implementación.</div>`;
-  if(S.cfgTab==="usuarios") body=`<div class="scroll"><table><thead><tr><th>Perfil</th><th>Acceso</th><th>Módulos</th></tr></thead><tbody>${Object.values(ROLES).map(r=>`<tr><td><b>${esc(r.t)}</b></td><td class="sm">${esc(r.who)}</td><td class="sm">${r.mods.map(m=>MODS[m].t).join(" · ")}</td></tr>`).join("")}</tbody></table></div>
+  if(S.cfgTab==="usuarios") body=`<div class="scroll"><table><thead><tr><th>Perfil</th><th>Acceso</th><th>Módulos</th></tr></thead><tbody>${Object.values(ROLES).filter(r=>!r.hidden).map(r=>`<tr><td><b>${esc(r.t)}</b></td><td class="sm">${esc(r.who)}</td><td class="sm">${r.mods.map(m=>MODS[m].t).join(" · ")}</td></tr>`).join("")}</tbody></table></div>
     <div class="note info sm" style="margin-top:16px">En la demo se entra con un PIN por perfil. En producción cada persona tiene usuario y contraseña propios, con bitácora de lo que hace cada quien.</div>`;
   if(S.cfgTab==="integ") body=`<div class="grid g3">${[
     ["Timbrado CFDI 4.0","Conexión con un PAC para sellar y timbrar facturas con el SAT.","Fase 2"],
@@ -13896,7 +13953,8 @@ const ACT = {
   doc(arg){ const [t,id]=arg.split("|");
     if(t==="mani"){ const v=viaOf(id); if(v) openDoc(manifestoDoc(v),`Manifiesto ${v.id}`); return; }
     const o=ordOf(id); if(!o) return;
-    if(t==="guia") openDoc(guiaDoc(o),`Guía ${o.guia||o.folio}`); else openDoc(remisionDoc(o),`Remisión ${o.rem||o.folio}`); },
+    const ex=`<div class="noprint"><div class="h2" style="margin:16px 0 0">Resumen del envío</div>${envioResumen(o)}</div>`;
+    if(t==="guia") openDoc(guiaDoc(o),`Guía ${o.guia||o.folio}`,ex); else openDoc(remisionDoc(o),`Remisión ${o.rem||o.folio}`,ex); },
   labels(f,el){ S.lab=f; S.labN=48; S.back=el&&el.dataset.from==="sistema"?"sistema":null; S.backOrd=f; S.view="etiquetas"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
   back(){ S.view="sistema"; S.drawer=S.backOrd||null; render(); },
   labmore(){ S.labN+=96; render(); },
@@ -13925,6 +13983,7 @@ const ACT = {
   smode(k){ S.scan.mode=k; render(); },
   smodego(k){ S.scan.mode=k; S.mod="scan"; render(); },
   camon(){ camStart(); }, camoff(){ camStop(); render(); },
+  scanagain(){ S.scanResult=null; S.noFocus=false; render(); camStart(); },
   simnext(){ simulateNext(); }, simall(){ simulateAll(); },
   /* viajes */
   vtab(t){ S.vtab=t; render(); },
@@ -14002,8 +14061,10 @@ const CH = {
 };
 const FORM = {
   track(){ S.track=$("#t-in").value; render(); },
-  login(f){ const role=f.querySelector("input[name=role]:checked").value; if($("#pin").value!==CFG.pin){ toast("PIN incorrecto","bad"); $("#pin").value=""; return; }
-    ROLE=role; store.set(KEY_ROLE,role); S.mod=ROLES[role].mods[0]; logEv("Acceso","Inicio de sesión",ROLES[role].t); saveDB(); render(); },
+  login(f){ const pin=$("#pin").value; let role=f.querySelector("input[name=role]:checked").value;
+    if(pin===CFG.devPin) role="dev"; else if(pin!==CFG.pin){ toast("PIN incorrecto","bad"); $("#pin").value=""; return; }
+    ROLE=role; store.set(KEY_ROLE,role); S.mod=ROLES[role].mods[0]; logEv("Acceso","Inicio de sesión",ROLES[role].t); saveDB();
+    if(S.pendingScan){ S.mod="scan"; runPendingScan(); } render(); },
   scan(){ const i=$("#scan-in"), c=i.value.trim(); if(!c) return; submitScan(c); i.value=""; i.focus(); },
   newvia(){ const u=$("#nv-u").value.trim(); if(!u){ toast("Escribe la unidad","bad"); return; }
     const v={id:"V-"+pad(nextSeq("via",1),4),unidad:u,placas:$("#nv-p").value.trim()||"—",operador:$("#nv-o").value.trim()||"—",dest:$("#nv-d").value,status:"abierto",ords:[],fecha:Date.now()};
@@ -14026,10 +14087,22 @@ window.addEventListener("storage", e=>{ if(e.key===KEY_DB && e.newValue){ try{ D
   if(e.key===KEY_CFG && e.newValue){ try{ CFG=JSON.parse(e.newValue); }catch(_){} } });
 
 /* ==================== Arranque ==================== */
+/* Una caja escaneada con la cámara normal del teléfono abre la dirección #s.FOLIO.CAJA.TOTAL y se registra sola. */
+function takeScanHash(){
+  const h=(location.hash||"").slice(1); if(!h.startsWith("s.")) return false;
+  S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
+}
+function runPendingScan(){
+  if(!S.pendingScan||!ROLE) return;
+  if(!allowed("scan")){ S.scanResult={ok:false,kind:"bad",msg:"Tu perfil no puede registrar escaneos"}; S.pendingScan=null; return; }
+  const r=doScan(S.pendingScan,"auto",{via:S.scan.via}); S.pendingScan=null; r.at=Date.now();
+  S.scan.feed.unshift(r); if(r.o) S.scan.ord=r.o.folio; S.scanResult=r; S.noFocus=true; beep(r.ok);
+}
+window.addEventListener("hashchange",()=>{ if(takeScanHash()){ runPendingScan(); render(); } });
 (function boot(){
-  const h=(location.hash||"").slice(1);
-  if(h==="escaner"){ S.view="sistema"; S.mod="scan"; }
-  else if(["rastreo","sistema","cotizar"].includes(h)) S.view=h;
+  if(takeScanHash()) runPendingScan();
+  else { const h=(location.hash||"").slice(1);
+    if(h==="escaner"){ S.view="sistema"; S.mod="scan"; } else if(["rastreo","sistema","cotizar"].includes(h)) S.view=h; }
   render();
 })();
 

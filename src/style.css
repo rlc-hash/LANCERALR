@@ -198,3 +198,4 @@ footer{padding:26px 16px;text-align:center;color:var(--mut);font-size:12px}
 .scanbox select{background:#fff;color:#14213d}
 .scanbox label{color:#cfd8ea}
 @media(max-width:600px){ .brand .pill{display:none} header.top .wrap{gap:8px} nav.tabs{gap:2px} nav.tabs button{padding:8px 7px;font-size:12.5px} .brand img{height:36px} }
+.mini{display:flex;gap:4px;margin:12px 0 4px}.mini span{flex:1;height:8px;border-radius:6px;background:#e3e8f0}.mini span.d{background:var(--ok)}.mini span.c{background:var(--c1)}

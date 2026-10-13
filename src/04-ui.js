@@ -1,7 +1,7 @@
 /* ==================== Estado de interfaz ==================== */
 const S = { view:"cotizar", mod:"dash", modals:[], drawer:null, done:null, track:"", lab:null, labN:48, back:null,
   fEstado:"todos", fDest:"todos", fq:"", fCliQ:"", ftab:"fac", docTab:"rem", cfgTab:"marca", repDays:30, logQ:"", vtab:"activos", cliSel:null,
-  scan:{mode:"recibida", via:"", ord:"", feed:[], cam:false} };
+  scan:{mode:"auto", via:"", ord:"", feed:[], cam:false}, scanResult:null, pendingScan:null };
 let Q = null;
 const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, obs:"" });
 Q = newQ();
@@ -10,8 +10,8 @@ const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id
 /* ---- modales y cajón ---- */
 function openModal(m){ S.modals.push(m); renderOverlay(); }
 function closeModal(){ S.modals.pop(); renderOverlay(); }
-function openDoc(html, title){
-  openModal({title, wide:true, html:`<div class="sheet" id="doc-sheet">${html}</div>`, actions:SANDBOX?"":`<button class="btn sm" data-act="printdoc">Imprimir / PDF</button>`});
+function openDoc(html, title, extra){
+  openModal({title, wide:true, html:`<div class="sheet" id="doc-sheet">${html}</div>${extra||""}`, actions:SANDBOX?"":`<button class="btn sm" data-act="printdoc">Imprimir / PDF</button>`});
 }
 function renderOverlay(){
   let h = "";
