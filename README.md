@@ -28,6 +28,9 @@ Pensada para una fletera que hoy lo hace todo a mano: **un toque por pedido, no 
 - **Seguro:** 1% del valor declarado (configurable); el cliente puede subir la factura de su mercancía; se suma al total y sale como concepto propio en la factura y el XML.
 - **Conteo:** confirmación de cajas en recepción y en entrega, corrección de conteo con motivo y entrega parcial.
 
+## Datos compartidos (v9)
+Ver `docs/NUBE.md`. Con la nube conectada (Supabase gratis), todos los usuarios ven los mismos pedidos, calendario y cajas. El panel general es interactivo: cada número, barra y fila abre el detalle.
+
 ## Pendientes con ALR
 Logo oficial en alta resolución · azul de marca · razón social y RFC reales · factor volumétrico (556 kg/m³ es inferido) · regla para medidas especiales · tabla de recolección/entrega · descuentos por volumen · origen · IVA.
 Para producción: backend compartido, PAC para timbrar (y complemento Carta Porte), usuarios individuales.

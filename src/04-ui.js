@@ -27,7 +27,7 @@ function applyBrand(){
   const b=CFG.brand, r=document.documentElement.style;
   r.setProperty("--c1",b.c1); r.setProperty("--c2",b.c2);
   document.title = "Cotizador · "+b.short;
-  $("#brand").innerHTML = `<img src="${esc(logoSrc())}" alt="${esc(b.short)}"><b>${S.view==="sistema"?"Sistema ALR":"Cotizador en línea"}</b><span class="pill" style="background:rgba(255,255,255,.18);color:#fff">${APP_VERSION}</span>`;
+  $("#brand").innerHTML = `<img src="${esc(logoSrc())}" alt="${esc(b.short)}"><b>${S.view==="sistema"?"Sistema ALR":"Cotizador en línea"}</b><span class="pill" style="background:rgba(255,255,255,.18);color:#fff">${APP_VERSION}</span><span id="cloudpill" class="pill keep ${NUBE.estado==="ok"?"ok":"bad"}" style="${nubeOn()?"":"display:none"}" title="${esc(NUBE.err||"")}">${NUBE.estado==="ok"?"☁ En línea":"☁ Sin conexión"}</span>`;
   const tabs = [["cotizar","Cotizar"],["rastreo","Rastrear envío"],["sistema", ROLE?"Sistema ALR":"🔒 Sistema ALR"]];
   $("#nav").innerHTML = tabs.map(([k,t])=>`<button data-act="go" data-arg="${k}" class="${(S.view===k||(S.view==="etiquetas"&&k==="rastreo"))?"on":""}">${t}</button>`).join("");
   $("#foot").innerHTML = `${esc(b.name)} · Cotización sujeta a validación de ALR · Tarifa vigente ${esc(CFG.vigencia)}<br>Demo operativo: los datos se guardan solo en este navegador. <b>Versión ${APP_VERSION}</b> · ${APP_DATE}`;
@@ -128,10 +128,10 @@ function pieceRow(it,i){
 function renderPieces(){ $("#q-pieces").innerHTML = Q.items.map(pieceRow).join(""); }
 function qvalid(){
   const m=[];
-  if(!Q.sol.nombre.trim()) m.push("nombre del remitente");
+  if(Q.sol.nombre.trim().length<3) m.push("nombre del remitente (nombre completo)");
   if(!/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())) m.push("correo válido");
   if(Q.sol.tel.replace(/\D/g,"").length<8) m.push("teléfono");
-  if(!Q.dst.nombre.trim()) m.push("destinatario");
+  if(Q.dst.nombre.trim().length<3) m.push("destinatario");
   if(!Q.dst.dir.trim()) m.push("dirección de entrega");
   if(Q.dst.tel.replace(/\D/g,"").length<8) m.push("teléfono del destinatario");
   if(Q.items.some(i=>!(i.qty>=1))) m.push("cantidad de cajas");

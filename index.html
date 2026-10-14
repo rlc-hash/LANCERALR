@@ -278,6 +278,11 @@ details summary{padding:6px 0}
 .cc.sel{border-color:var(--c1);box-shadow:0 0 0 3px color-mix(in srgb,var(--c1) 22%,transparent)}
 .cc.today b{color:var(--c1);text-decoration:underline}
 
+button.kpi{border:0;text-align:left;cursor:pointer;font:inherit;width:100%;transition:.15s} button.kpi:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,24,40,.08),0 12px 28px rgba(16,24,40,.12)}
+.bars button.brb{background:none;border:0;padding:3px 6px;margin:2px -6px;text-align:left;cursor:pointer;font:inherit;width:calc(100% + 12px);border-radius:8px;color:inherit}
+.bars button.brb:hover{background:var(--soft)}
+@media(max-width:600px){ .brand .pill.keep{display:inline-block} }
+
 </style>
 </head>
 <body>
@@ -12710,7 +12715,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v8", APP_DATE = "13 oct 2026";
+const APP_VERSION = "v9", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -12763,7 +12768,7 @@ const DEFAULT_CFG = () => ({
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
 (function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones","seguroPct","seguroIva","seguroClave","recoleccion"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
-const saveCfg = () => store.set(KEY_CFG, CFG);
+const saveCfg = () => { store.set(KEY_CFG, CFG); try{ nubePush(); }catch(e){} };
 
 /* ==================== Etapas de escaneo ==================== */
 const STAGES = [
@@ -12910,7 +12915,7 @@ function shareText(o){
 
 /* ==================== Base de datos (localStorage) ==================== */
 let DB = null;
-const saveDB = () => store.set(KEY_DB, DB);
+const saveDB = () => { store.set(KEY_DB, DB); try{ nubePush(); }catch(e){} };
 const cliOf = id => DB.cli.find(c=>c.id===id) || {id, razon:"(cliente eliminado)", rfc:"", nombre:""};
 const ordOf = f => DB.ord.find(o=>o.folio===f);
 const facOf = id => DB.fac.find(x=>x.id===id);
@@ -12921,10 +12926,14 @@ const stLabel = k => (CFG.steps.find(s=>s.k===k)||{t:k}).t;
 let ROLE = store.get(KEY_ROLE) || null;
 
 function logEv(mod, accion, detalle){
-  DB.log.unshift({at:Date.now(), rol:ROLE?ROLES[ROLE].t:"Cliente/Sistema", mod, accion, detalle:detalle||""});
+  DB.log.unshift({at:Date.now(), id:Math.random().toString(36).slice(2,8), rol:ROLE?ROLES[ROLE].t:"Cliente/Sistema", mod, accion, detalle:detalle||""});
   if(DB.log.length>600) DB.log.length=600;
 }
-function nextSeq(k, start){ DB.seq[k] = (DB.seq[k]||start-1)+1; return DB.seq[k]; }
+function nextSeq(k, start){
+  let on=false; try{ on=nubeOn(); }catch(e){}
+  if(on){ const v=nubeSeqRemoto(k,start); if(v!=null){ DB.seq[k]=Math.max(DB.seq[k]||0,v); return v; } }
+  DB.seq[k] = (DB.seq[k]||start-1)+1; return DB.seq[k];
+}
 
 /* ---- cajas escaneadas: cadena de dígitos, un dígito por caja (0 = sin escanear … 5 = entregada) ---- */
 const boxStage = (o,n) => +o.sc.charAt(n-1);
@@ -12965,7 +12974,7 @@ function createOrder(q){
   o.seguro = q.serv.seguro ? {on:true, valor:+q.seguro.valor||0, file:q.seguro.file||null} : {on:false,valor:0};
   o.rec = q.serv.recoleccion ? {on:true, dir:q.rec.dir.trim(), contacto:{nombre:q.rec.contacto.nombre.trim(),tel:q.rec.contacto.tel.trim()}, pregunta:q.rec.pregunta.trim(), instr:q.rec.instr.trim(), fecha:q.rec.fecha, desde:q.rec.desde, hasta:q.rec.hasta, estado:"solicitada", solicitadaAt:Date.now()} : {on:false};
   o.totals = calc(o.dest, items, o.seguro); o.sc = "0".repeat(o.totals.piezas);
-  DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} cajas · ${money(o.totals.total)}`); saveDB();
+  DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} caja${o.totals.piezas===1?"":"s"} · ${money(o.totals.total)}`); saveDB();
   const mis=store.get("alr_mis_v1")||[]; mis.unshift(o.folio); store.set("alr_mis_v1",mis.slice(0,20));
   return o;
 }
@@ -13318,7 +13327,7 @@ function applyBrand(){
   const b=CFG.brand, r=document.documentElement.style;
   r.setProperty("--c1",b.c1); r.setProperty("--c2",b.c2);
   document.title = "Cotizador · "+b.short;
-  $("#brand").innerHTML = `<img src="${esc(logoSrc())}" alt="${esc(b.short)}"><b>${S.view==="sistema"?"Sistema ALR":"Cotizador en línea"}</b><span class="pill" style="background:rgba(255,255,255,.18);color:#fff">${APP_VERSION}</span>`;
+  $("#brand").innerHTML = `<img src="${esc(logoSrc())}" alt="${esc(b.short)}"><b>${S.view==="sistema"?"Sistema ALR":"Cotizador en línea"}</b><span class="pill" style="background:rgba(255,255,255,.18);color:#fff">${APP_VERSION}</span><span id="cloudpill" class="pill keep ${NUBE.estado==="ok"?"ok":"bad"}" style="${nubeOn()?"":"display:none"}" title="${esc(NUBE.err||"")}">${NUBE.estado==="ok"?"☁ En línea":"☁ Sin conexión"}</span>`;
   const tabs = [["cotizar","Cotizar"],["rastreo","Rastrear envío"],["sistema", ROLE?"Sistema ALR":"🔒 Sistema ALR"]];
   $("#nav").innerHTML = tabs.map(([k,t])=>`<button data-act="go" data-arg="${k}" class="${(S.view===k||(S.view==="etiquetas"&&k==="rastreo"))?"on":""}">${t}</button>`).join("");
   $("#foot").innerHTML = `${esc(b.name)} · Cotización sujeta a validación de ALR · Tarifa vigente ${esc(CFG.vigencia)}<br>Demo operativo: los datos se guardan solo en este navegador. <b>Versión ${APP_VERSION}</b> · ${APP_DATE}`;
@@ -13419,10 +13428,10 @@ function pieceRow(it,i){
 function renderPieces(){ $("#q-pieces").innerHTML = Q.items.map(pieceRow).join(""); }
 function qvalid(){
   const m=[];
-  if(!Q.sol.nombre.trim()) m.push("nombre del remitente");
+  if(Q.sol.nombre.trim().length<3) m.push("nombre del remitente (nombre completo)");
   if(!/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())) m.push("correo válido");
   if(Q.sol.tel.replace(/\D/g,"").length<8) m.push("teléfono");
-  if(!Q.dst.nombre.trim()) m.push("destinatario");
+  if(Q.dst.nombre.trim().length<3) m.push("destinatario");
   if(!Q.dst.dir.trim()) m.push("dirección de entrega");
   if(Q.dst.tel.replace(/\D/g,"").length<8) m.push("teléfono del destinatario");
   if(Q.items.some(i=>!(i.qty>=1))) m.push("cantidad de cajas");
@@ -13601,7 +13610,14 @@ function envioResumen(o){
 const ptitle = (t,right) => `<div class="ptitle"><h2>${esc(t)}</h2><div style="margin-left:auto" class="chips">${right||""}</div></div>`;
 
 /* ==================== Panel general ==================== */
+function barBtn(label,val,max,cls,txt,act,arg){ return `<button class="br brb" data-act="${act}" data-arg="${esc(arg)}"><span>${esc(label)}</span><div class="tr"><i class="${cls||""}" style="width:${max?Math.max(2,val/max*100):0}%"></i></div><b class="mono r">${txt??val}</b></button>`; }
 function bar(label,val,max,cls,txt){ return `<div class="br"><span>${esc(label)}</span><div class="tr"><i class="${cls||""}" style="width:${max?Math.max(2,val/max*100):0}%"></i></div><b class="mono r">${txt??val}</b></div>`; }
+function dashPedidos(){
+  const l=DB.ord.filter(o=>!o.cancelado&&o.status!=="entregado").sort((a,b)=>b.createdAt-a.createdAt).slice(0,12);
+  return `<div class="card" style="margin-top:16px;padding:16px"><div class="h2">Revisar pedidos <span class="mut sm" style="font-weight:500">toca uno para ver todo su detalle</span><button class="btn sec sm" style="margin-left:auto" data-act="dpe" data-arg="e:todos">Ver todos</button></div>
+  <div class="scroll"><table class="rt"><thead><tr><th>Folio</th><th>Cliente</th><th>Destino</th><th>Estatus</th><th class="r">Cajas</th><th>Llega</th></tr></thead><tbody>
+  ${l.map(o=>{ const e=eta(o.dest,o.createdAt), n=o.sc.length, rec=n-stageCounts(o)[0]; return `<tr class="click" data-act="open" data-arg="${esc(o.folio)}"><td><b>${esc(o.folio)}</b>${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}</td><td>${esc(o.sol.empresa||o.sol.nombre)}</td><td>${esc(dest(o.dest).name)}</td><td>${badge(o)}</td><td class="r mono">${stIdx(o)>=1?`${rec}/${n}`:n}</td><td class="sm">${e?esc(etaText(e)):"por confirmar"}</td></tr>`; }).join("")||`<tr><td colspan="6" class="mut c" style="padding:20px">No hay pedidos en operación.</td></tr>`}</tbody></table></div></div>`;
+}
 function modDash(){
   const act = DB.ord.filter(o=>!o.cancelado);
   const porConf = act.filter(o=>o.status==="solicitado");
@@ -13620,37 +13636,39 @@ function modDash(){
   { const rp=DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.estado==="solicitada"); if(rp.length) alerts.push({k:"warn",t:`${rp.length} recolección(es) por confirmar`,s:`La más próxima: ${fshort(fromYmd(rp.map(o=>o.rec.fecha).sort()[0]))}`,a:"modgo",arg:"reco"}); }
   act.filter(o=>o.totals.est&&o.status==="solicitado").forEach(o=>alerts.push({k:"warn",t:`${o.folio} con medida especial`,s:"Validar precio antes de confirmar",a:"open",arg:o.folio}));
   DB.cli.filter(c=>c.pendiente).forEach(c=>alerts.push({k:"warn",t:`Cliente ${c.razon} sin datos fiscales`,s:"Completar RFC y régimen para facturar",a:"modgo",arg:"clientes"}));
-  const porEtapa = CFG.steps.map(s=>({t:s.t,n:act.filter(o=>o.status===s.k).length}));
+  const porEtapa = CFG.steps.map(s=>({k:s.k,t:s.t,n:act.filter(o=>o.status===s.k).length}));
   const maxE = Math.max(1,...porEtapa.map(x=>x.n));
-  const porDest = CFG.destinos.map(d=>({t:d.name,v:act.filter(o=>o.dest===d.id).reduce((s,o)=>s+o.totals.total,0),n:act.filter(o=>o.dest===d.id).length}));
+  const porDest = CFG.destinos.map(d=>({id:d.id,t:d.name,v:act.filter(o=>o.dest===d.id).reduce((s,o)=>s+o.totals.total,0),n:act.filter(o=>o.dest===d.id).length}));
   const maxD = Math.max(1,...porDest.map(x=>x.v));
   const tot=[0,0,0,0,0,0]; act.forEach(o=>stageCounts(o).forEach((v,i)=>tot[i]+=v)); const T=tot.reduce((a,b)=>a+b,0)||1;
   return `${ptitle("Panel general",`<span class="mut sm">${fday(Date.now())}</span>`)}
   <div class="kpis">
-    <div class="kpi w"><small>Por confirmar</small><b>${porConf.length}</b><span>pedidos nuevos</span></div>
-    <div class="kpi"><small>En operación</small><b>${enOp.length}</b><span>confirmados, sin entregar</span></div>
-    <div class="kpi b"><small>Cajas en ruta</small><b>${cajasRuta}</b><span>escaneadas en camión</span></div>
-    <div class="kpi g"><small>Entregados</small><b>${entreg}</b><span>pedidos completos</span></div>
-    <div class="kpi b"><small>Por cobrar</small><b>${money0(porCobrar)}</b><span>${emit.length} facturas abiertas</span></div>
-    <div class="kpi"><small>Vencido</small><b>${money0(vencido)}</b><span>cartera vencida</span></div>
+    <button class="kpi w" data-act="dpe" data-arg="e:solicitado"><small>Por confirmar</small><b>${porConf.length}</b><span>pedidos nuevos</span></button>
+    <button class="kpi" data-act="dpe" data-arg="e:operacion"><small>En operación</small><b>${enOp.length}</b><span>confirmados, sin entregar</span></button>
+    <button class="kpi b" data-act="dpe" data-arg="e:transito"><small>Cajas en ruta</small><b>${cajasRuta}</b><span>escaneadas en camión</span></button>
+    <button class="kpi g" data-act="dpe" data-arg="e:entregado"><small>Entregados</small><b>${entreg}</b><span>pedidos completos</span></button>
+    ${allowed("fact")?`<button class="kpi b" data-act="dpe" data-arg="f:cob"><small>Por cobrar</small><b>${money0(porCobrar)}</b><span>${emit.length} facturas abiertas</span></button>`:`<div class="kpi b"><small>Por cobrar</small><b>${money0(porCobrar)}</b><span>${emit.length} facturas abiertas</span></div>`}
+    ${allowed("fact")?`<button class="kpi" data-act="dpe" data-arg="f:fac"><small>Vencido</small><b>${money0(vencido)}</b><span>cartera vencida</span></button>`:`<div class="kpi"><small>Vencido</small><b>${money0(vencido)}</b><span>cartera vencida</span></div>`}
   </div>
   <div class="grid g2">
     <div class="card"><div class="h2">Requiere atención <span class="pill ${alerts.length?"red":"ok"}">${alerts.length}</span></div>
       ${alerts.length?alerts.slice(0,9).map(a=>`<div class="feed"><div class="it ${a.k}" style="justify-content:space-between"><span><b style="font-family:inherit">${esc(a.t)}</b><br><span class="xs">${esc(a.s)}</span></span><button class="btn sec sm" data-act="${a.a}" data-arg="${esc(a.arg)}">Abrir</button></div></div>`).join(""):`<div class="note ok">Todo en orden.</div>`}</div>
-    <div class="card"><div class="h2">Pedidos por etapa</div><div class="bars">${porEtapa.map(x=>bar(x.t,x.n,maxE,"")).join("")}</div>
+    <div class="card"><div class="h2">Pedidos por etapa</div><div class="bars">${porEtapa.map(x=>barBtn(x.t,x.n,maxE,"",x.n,"dpe","e:"+x.k)).join("")}</div>
       <div class="h2" style="margin-top:18px">Cajas por etapa de escaneo</div>
       <div class="stack">${[5,4,3,2,1,0].map(i=>tot[i]?`<i style="width:${tot[i]/T*100}%;background:${stageColor(i)}"></i>`:"").join("")}</div>
       <div class="legend">${[1,2,3,4,5,0].map(i=>`<span><i style="background:${stageColor(i)}"></i>${i?STAGES[i-1].t:"Sin escanear"}: ${tot[i]}</span>`).join("")}</div></div>
-    <div class="card"><div class="h2">Valor por destino</div><div class="bars">${porDest.map(x=>bar(`${x.t} (${x.n})`,x.v,maxD,"r",money0(x.v))).join("")}</div></div>
-    <div class="card"><div class="h2">Actividad reciente</div>${DB.log.slice(0,8).map(l=>`<div class="sm" style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(l.accion)}</b> <span class="mut">· ${esc(l.detalle)}</span><div class="xs mut">${fdate(l.at)} · ${esc(l.rol)}</div></div>`).join("")||`<div class="mut">Sin actividad.</div>`}</div>
-  </div>`;
+    <div class="card"><div class="h2">Valor por destino</div><div class="bars">${porDest.map(x=>barBtn(`${x.t} (${x.n})`,x.v,maxD,"r",money0(x.v),"dpe","d:"+x.id)).join("")}</div></div>
+    <div class="card"><div class="h2">Actividad reciente</div>${DB.log.slice(0,8).map(l=>{ const fo=(String(l.detalle).match(/ALR-\d{4}-\d{4}/)||[])[0]; return `<div class="sm" ${fo&&ordOf(fo)?`data-act="open" data-arg="${fo}" style="padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer" title="Abrir pedido"`:`style="padding:6px 0;border-bottom:1px solid var(--line)"`}><b>${esc(l.accion)}</b> <span class="mut">· ${esc(l.detalle)}</span><div class="xs mut">${fdate(l.at)} · ${esc(l.rol)}</div></div>`; }).join("")||`<div class="mut">Sin actividad.</div>`}</div>
+  </div>
+  ${dashPedidos()}`;
 }
 
 /* ==================== Pedidos ==================== */
 function modPedidos(){
   const q = S.fq.toLowerCase();
   const list = DB.ord.filter(o=>{
-    if(S.fEstado!=="todos" && (S.fEstado==="cancelado"?!o.cancelado:(o.cancelado||o.status!==S.fEstado))) return false;
+    if(S.fEstado==="operacion"){ if(o.cancelado||stIdx(o)<1||o.status==="entregado") return false; }
+    else if(S.fEstado!=="todos" && (S.fEstado==="cancelado"?!o.cancelado:(o.cancelado||o.status!==S.fEstado))) return false;
     if(S.fDest!=="todos" && o.dest!==S.fDest) return false;
     if(q && !(o.folio+o.sol.nombre+o.sol.empresa+o.dst.nombre+(o.guia||"")).toLowerCase().includes(q)) return false;
     return true;
@@ -13659,7 +13677,7 @@ function modPedidos(){
   <div class="card" style="padding:16px">
     <div class="toolbar">
       <label for="f-q" style="display:none">Buscar</label><input id="f-q" data-in="fq" placeholder="Buscar folio, cliente, guía…" value="${esc(S.fq)}">
-      <label for="f-est" style="display:none">Estatus</label><select id="f-est" data-ch="fEstado"><option value="todos">Todos los estatus</option>${CFG.steps.map(s=>`<option value="${s.k}" ${S.fEstado===s.k?"selected":""}>${esc(s.t)}</option>`).join("")}<option value="cancelado" ${S.fEstado==="cancelado"?"selected":""}>Cancelados</option></select>
+      <label for="f-est" style="display:none">Estatus</label><select id="f-est" data-ch="fEstado"><option value="todos">Todos los estatus</option><option value="operacion" ${S.fEstado==="operacion"?"selected":""}>En operación (aceptados, sin entregar)</option>${CFG.steps.map(s=>`<option value="${s.k}" ${S.fEstado===s.k?"selected":""}>${esc(s.t)}</option>`).join("")}<option value="cancelado" ${S.fEstado==="cancelado"?"selected":""}>Cancelados</option></select>
       <label for="f-dst" style="display:none">Destino</label><select id="f-dst" data-ch="fDest"><option value="todos">Todos los destinos</option>${CFG.destinos.map(d=>`<option value="${d.id}" ${S.fDest===d.id?"selected":""}>${esc(d.name)}</option>`).join("")}</select>
       <span class="mut sm" style="margin-left:auto">${list.length} pedido(s)</span>
       <button class="btn sec sm" data-act="exportorders">Exportar</button>
@@ -14034,7 +14052,7 @@ function modBitacora(){
 
 /* ==================== Configuración ==================== */
 function modConfig(){
-  const tabs=[["marca","Marca"],["tarifas","Tarifas y destinos"],["desc","Descuentos"],["reglas","Reglas"],["empresa","Empresa y fiscal"],["usuarios","Usuarios"],["integ","Integraciones"],["datos","Datos"]];
+  const tabs=[["marca","Marca"],["tarifas","Tarifas y destinos"],["desc","Descuentos"],["reglas","Reglas"],["empresa","Empresa y fiscal"],["usuarios","Usuarios"],["integ","Integraciones"],["nube","Nube"],["datos","Datos"]];
   const b=CFG.brand, E=CFG.empresa;
   const inp=(id,l,path,v,ex="")=>`<div><label for="${id}">${l}</label><input id="${id}" data-in="cfg" data-arg="${path}" value="${esc(v)}" ${ex}></div>`;
   let body="";
@@ -14083,6 +14101,7 @@ function modConfig(){
   ].map(([t,d,s])=>`<div class="card flat"><div style="display:flex;justify-content:space-between;gap:8px"><b>${t}</b><span class="pill ${s==="Listo en demo"?"ok":"warn"}">${s}</span></div><div class="sm mut" style="margin-top:6px">${d}</div></div>`).join("")}</div>`;
   if(S.cfgTab==="datos") body=`<div class="chips"><button class="btn dark" data-act="exportcfg">Exportar configuración</button><label class="btn sec" style="margin:0;text-transform:none;letter-spacing:0;font-size:15px;color:var(--c2)">Importar configuración<input type="file" id="cfg-file" data-ch="cfgfile" accept=".json" hidden></label><button class="btn sec" data-act="exportdb">Exportar toda la información</button><button class="btn sec" data-act="exportcsv">Pedidos (CSV)</button></div>
     <h3 style="margin:24px 0 8px">Reiniciar demo</h3><div class="chips"><button class="btn sec sm" data-act="resetdata">Restablecer datos de ejemplo</button><button class="btn sec sm" data-act="resetall" style="color:var(--bad)">Borrar todo y volver a valores de fábrica</button></div>`;
+  if(S.cfgTab==="nube") body=nubeConfigHTML();
   return `${ptitle("Configuración")}<div class="card"><div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.cfgTab===k?"on":""}" data-act="cfgtab" data-arg="${k}">${t}</button>`).join("")}</div>${body}</div>`;
 }
 
@@ -14538,6 +14557,151 @@ function repeatCardHTML(){
 }
 function segRes(){ const r=$("#sg-res"); if(!r) return; const v=parseFloat(Q.seguro.valor)||0; r.innerHTML=`${v>0?`Costo del seguro: <b>${money(v*CFG.seguroPct/100)}</b> + IVA`:"Captura el valor para calcular el seguro."}${Q.seguro.file?` · <b>${esc(Q.seguro.file.name)}</b> adjunta`:""}`; }
 
+/* ==================== Nube: datos compartidos entre dispositivos (Supabase) ==================== */
+/* Cada navegador guarda su copia; con la nube conectada, todos escriben y leen del mismo lugar. */
+const NUBE = Object.assign({url:"",key:"",on:false,lastS:0,dev:Math.random().toString(36).slice(2,8),estado:"off",err:"",at:0,every:5000}, store.get("alr_nube_v1")||{});
+const NH = {}, NTOMB = [];
+let nbusy=false, ndeb=null;
+const COLS = {ord:"folio", cli:"id", fac:"id", via:"id", rem:"folio"};
+const NUBE_SQL = `create table if not exists alr_items(
+  id text primary key, kind text not null, data jsonb not null,
+  u bigint not null default 0, s bigint not null default 0);
+create index if not exists alr_items_s on alr_items(s);
+create or replace function alr_touch() returns trigger language plpgsql as $$
+begin new.s := (extract(epoch from clock_timestamp())*1000000)::bigint; return new; end $$;
+drop trigger if exists alr_touch on alr_items;
+create trigger alr_touch before insert or update on alr_items for each row execute function alr_touch();
+create table if not exists alr_seq(k text primary key, v bigint not null);
+create or replace function next_seq(p_k text, p_start bigint) returns bigint language plpgsql as $$
+declare r bigint; begin
+  insert into alr_seq(k,v) values (p_k,p_start)
+  on conflict (k) do update set v = alr_seq.v + 1 returning v into r;
+  return r; end $$;
+alter table alr_items enable row level security;
+alter table alr_seq enable row level security;
+create policy "alr_items_todo" on alr_items for all using (true) with check (true);
+create policy "alr_seq_todo" on alr_seq for all using (true) with check (true);`;
+
+function nubeSave(){ store.set("alr_nube_v1",{url:NUBE.url,key:NUBE.key,on:NUBE.on,lastS:NUBE.lastS,dev:NUBE.dev}); }
+function nubeOn(){ return !!(NUBE.on && NUBE.url && NUBE.key); }
+function nubeBase(){ return NUBE.url.replace(/\/+$/,"")+"/rest/v1"; }
+function nubeHdr(extra){ return {apikey:NUBE.key, Authorization:"Bearer "+NUBE.key, "Content-Type":"application/json", ...(extra||{})}; }
+function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return h+":"+s.length; }
+function dataHash(d){ return hashStr(JSON.stringify(d,(k,v)=>k==="_u"?undefined:v)); }
+function saveLocalOnly(){ store.set(KEY_DB,DB); store.set(KEY_CFG,CFG); }
+function b64u(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function unb64u(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; return decodeURIComponent(escape(atob(s))); }
+
+function nubeLocal(){
+  const out=[];
+  Object.entries(COLS).forEach(([k,f])=>DB[k].forEach(x=>out.push({id:k+":"+x[f],kind:k,data:x})));
+  out.push({id:"cal",kind:"cal",data:DB.cal}); out.push({id:"cfg",kind:"cfg",data:CFG}); out.push({id:"seq",kind:"seq",data:DB.seq});
+  DB.log.slice(0,120).forEach(l=>{ if(!l.id) l.id=Math.random().toString(36).slice(2,8); out.push({id:"log:"+l.at+l.id,kind:"log",data:l}); });
+  return out;
+}
+function normOrd(o){
+  o.totals=calc(o.dest,o.items,o.seguro);
+  if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas);
+  if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; if(!o.seguro) o.seguro={on:false,valor:0}; if(!o.rec) o.rec={on:false};
+}
+function nubeApply(row){
+  const d=row.data||{}, id=row.id, ix=id.indexOf(":"), kind=ix<0?id:id.slice(0,ix), key=ix<0?null:id.slice(ix+1), rem=+d._u||0;
+  if(kind==="seq"){ let ch=false; Object.entries(d).forEach(([k,v])=>{ if(k!=="_u"&&typeof v==="number"&&v>(DB.seq[k]||0)){ DB.seq[k]=v; ch=true; } }); NH.seq=dataHash(DB.seq); return ch; }
+  if(kind==="cal"){ if(rem>(+DB.cal._u||0)){ DB.cal=d; if(!DB.cal.bloq) DB.cal.bloq={}; NH.cal=dataHash(d); return true; } return false; }
+  if(kind==="cfg"){ if(rem>(+CFG._u||0)){ const base=DEFAULT_CFG(); CFG=Object.assign(base,d); CFG.steps=base.steps; NH.cfg=dataHash(CFG); return true; } return false; }
+  if(kind==="log"){ if(!DB.log.some(l=>l.at===d.at&&l.id===d.id)){ DB.log.push(d); DB.log.sort((a,b)=>b.at-a.at); if(DB.log.length>600) DB.log.length=600; NH[id]=dataHash(d); return true; } return false; }
+  const arr=DB[kind]; if(!arr||!COLS[kind]) return false;
+  const f=COLS[kind], i=arr.findIndex(x=>String(x[f])===key);
+  if(d._del){ if(i>=0&&rem>(+arr[i]._u||0)){ arr.splice(i,1); NH[id]="del"; return true; } return false; }
+  if(i<0) arr.push(d); else { if(rem<=(+arr[i]._u||0)) return false; arr[i]=d; }
+  if(kind==="ord"){ normOrd(d); DB.ord.sort((a,b)=>b.createdAt-a.createdAt); }
+  NH[id]=dataHash(d); return true;
+}
+async function nubePull(full){
+  const r=await fetch(`${nubeBase()}/alr_items?s=gt.${full?0:NUBE.lastS}&order=s.asc&limit=3000`,{headers:nubeHdr()});
+  if(!r.ok) throw new Error("La nube respondió "+r.status+(r.status===401||r.status===403?" (revisa la llave)":r.status===404?" (¿ya corriste el SQL?)":""));
+  const rows=await r.json(); let changed=false, maxS=NUBE.lastS;
+  rows.forEach(row=>{ if(row.s>maxS) maxS=row.s; if(nubeApply(row)) changed=true; });
+  NUBE.lastS=maxS; nubeSave(); if(changed) saveLocalOnly();
+  return changed;
+}
+async function nubeSend(){
+  const dirty=[]; nubeLocal().forEach(it=>{ const h=dataHash(it.data); if(NH[it.id]!==h) dirty.push({it,h}); });
+  if(!dirty.length && !NTOMB.length) return 0;
+  const now=Date.now(); dirty.forEach(({it})=>{ it.data._u=now; });
+  const rows=dirty.map(({it})=>({id:it.id,kind:it.kind,data:it.data,u:now})).concat(NTOMB.map(t=>({id:t.id,kind:t.kind,data:{_del:true,_u:now},u:now})));
+  for(let i=0;i<rows.length;i+=80){
+    const r=await fetch(`${nubeBase()}/alr_items?on_conflict=id`,{method:"POST",headers:nubeHdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows.slice(i,i+80))});
+    if(!r.ok) throw new Error("No se pudo guardar en la nube ("+r.status+")");
+  }
+  dirty.forEach(({it,h})=>{ NH[it.id]=h; }); NTOMB.forEach(t=>{ NH[t.id]="del"; }); NTOMB.length=0; saveLocalOnly();
+  return rows.length;
+}
+function nubeTomb(kind,key){ if(nubeOn()) NTOMB.push({id:kind+":"+key,kind}); }
+function nubePush(){ if(!nubeOn()) return; clearTimeout(ndeb); ndeb=setTimeout(nubeSync,600); }
+async function nubeSync(){
+  if(!nubeOn()||nbusy) return; nbusy=true;
+  try{ const ch=await nubePull(); await nubeSend(); NUBE.estado="ok"; NUBE.err=""; NUBE.at=Date.now(); if(ch) nubeRefreshUI(); }
+  catch(e){ NUBE.estado="err"; NUBE.err=String(e&&e.message||e); }
+  finally{ nbusy=false; nubeBadge(); }
+}
+function nubeRefreshUI(){
+  const a=document.activeElement, typing=a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName);
+  if(S.modals.length||S.drawer||typing||S.scan.cam){ toast("Hay cambios nuevos de otros usuarios. Se verán al cerrar esta ventana."); return; }
+  render();
+}
+function nubeBadge(){
+  const el=$("#cloudpill"); if(!el) return;
+  if(!nubeOn()){ el.style.display="none"; return; }
+  el.style.display=""; el.className="pill keep "+(NUBE.estado==="ok"?"ok":"bad"); el.textContent=NUBE.estado==="ok"?"☁ En línea":"☁ Sin conexión";
+  el.title=NUBE.err||("Última sincronización: "+fdate(NUBE.at));
+}
+function nubeSeqRemoto(k,start){
+  try{ const x=new XMLHttpRequest(); x.open("POST",nubeBase()+"/rpc/next_seq",false);
+    Object.entries(nubeHdr()).forEach(([a,b])=>x.setRequestHeader(a,b)); x.send(JSON.stringify({p_k:k,p_start:start}));
+    if(x.status>=200&&x.status<300){ const v=JSON.parse(x.responseText); if(typeof v==="number") return v; } }catch(e){}
+  return null;
+}
+async function nubeConectar(url,key){
+  Object.assign(NUBE,{url:url.trim().replace(/\/+$/,""),key:key.trim(),on:true,lastS:0,estado:"off",err:""}); nubeSave();
+  const r=await fetch(`${nubeBase()}/alr_items?select=id&limit=1`,{headers:nubeHdr()});
+  if(!r.ok){ NUBE.on=false; nubeSave(); throw new Error("No se pudo conectar ("+r.status+"). "+(r.status===404?"Corre primero el SQL en Supabase.":"Revisa la dirección y la llave.")); }
+  const rows=await r.json(); return rows.length===0 ? "vacia" : "con-datos";
+}
+async function nubeSubirTodo(){
+  Object.keys(NH).forEach(k=>delete NH[k]); const n=await nubeSend();
+  const seq=Object.entries(DB.seq).filter(([k,v])=>typeof v==="number").map(([k,v])=>({k,v}));
+  if(seq.length){ const r=await fetch(`${nubeBase()}/alr_seq?on_conflict=k`,{method:"POST",headers:nubeHdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(seq)}); if(!r.ok) throw new Error("No se pudieron subir los folios ("+r.status+")"); }
+  await nubePull(true); NUBE.estado="ok"; NUBE.at=Date.now(); nubeBadge(); return n;
+}
+async function nubeBajarTodo(){
+  DB.ord=[]; DB.cli=[]; DB.fac=[]; DB.via=[]; DB.rem=[]; DB.log=[]; NUBE.lastS=0; Object.keys(NH).forEach(k=>delete NH[k]);
+  DB.cal={bloq:{}}; DB.seq={}; CFG._u=0;
+  await nubePull(true); NUBE.estado="ok"; NUBE.at=Date.now(); saveLocalOnly(); nubeBadge();
+}
+function nubeDesconectar(){ NUBE.on=false; NUBE.estado="off"; nubeSave(); nubeBadge(); }
+function nubeLink(){ return `${qrBase()}#nube.${b64u(JSON.stringify({u:NUBE.url,k:NUBE.key}))}`; }
+function nubeLoop(){ Promise.resolve(nubeSync()).finally(()=>setTimeout(nubeLoop,NUBE.every||5000)); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) nubeSync(); });
+window.addEventListener("online",()=>nubeSync());
+setTimeout(nubeLoop,1500);
+
+/* ---- pantalla de configuración ---- */
+function nubeConfigHTML(){
+  const on=nubeOn(), st=on?(NUBE.estado==="ok"?`<span class="pill ok">☁ En línea</span> <span class="xs mut">última sincronización ${fdate(NUBE.at)}</span>`:`<span class="pill bad">☁ Sin conexión</span> <span class="xs">${esc(NUBE.err)}</span>`):`<span class="pill">Sin conectar</span>`;
+  return `<div class="note info sm" style="margin-bottom:14px">Hoy cada navegador guarda <b>su propia copia</b> de los datos; por eso dos usuarios ven números distintos. Al conectar la nube, todos leen y escriben en el mismo lugar y los pedidos, el calendario y las cajas quedan vinculados entre dispositivos.</div>
+  <div style="margin-bottom:14px">${st}</div>
+  <div class="row2"><div><label for="nb-u">Dirección del proyecto (Supabase)</label><input id="nb-u" value="${esc(NUBE.url)}" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off"></div>
+  <div><label for="nb-k">Llave pública (anon key)</label><input id="nb-k" value="${esc(NUBE.key)}" placeholder="eyJhbGciOi…" autocomplete="off"></div></div>
+  <div class="chips" style="margin-top:12px"><button class="btn" data-act="nubeconn">${on?"Reconectar":"Probar y conectar"}</button>
+    ${on?`<button class="btn sec" data-act="nubesync">Sincronizar ahora</button><button class="btn sec" data-act="nubelink">Copiar enlace para mis compañeros</button><button class="btn sec" data-act="nubedown">Bajar datos de la nube</button><button class="btn sec" data-act="nubeup">Subir mis datos a la nube</button><button class="btn ghost" style="color:var(--bad)" data-act="nubeoff">Desconectar</button>`:""}</div>
+  <h3 style="margin:22px 0 8px">Preparar Supabase (una sola vez)</h3>
+  <ol class="sm" style="margin:0 0 10px 18px;padding:0"><li>Crea un proyecto gratis en supabase.com.</li><li>Entra a <b>SQL Editor</b>, pega el texto de abajo y ejecútalo (<b>Run</b>).</li><li>En <b>Project Settings → API</b> copia la <b>Project URL</b> y la llave <b>anon public</b>, y pégalas arriba.</li><li>Presiona <b>Probar y conectar</b>. Después usa <b>Copiar enlace para mis compañeros</b>: quien lo abra queda conectado.</li></ol>
+  <textarea id="nb-sql" rows="9" readonly style="font:12px/1.4 ui-monospace,Menlo,monospace">${esc(NUBE_SQL)}</textarea>
+  <div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="copyfield" data-arg="nb-sql">Copiar SQL</button></div>
+  <div class="note sm" style="margin-top:14px">Esta conexión es de demostración: cualquiera con el enlace puede leer y escribir los datos. Para producción se agregan usuarios con contraseña y permisos por perfil.</div>`;
+}
+
 /* ==================== Render y acciones ==================== */
 function render(){
   applyBrand(); document.body.dataset.view=S.view;
@@ -14563,6 +14727,7 @@ const ACT = {
   go(v){ leaveScan(); if(v==="sistema") S.back=null; setView(v); },
   mod(m){ if(m!=="scan") leaveScan(); S.mod=m; S.drawer=null; S.modals=[]; try{ history.replaceState(null,"","#"+(m==="scan"?"escaner":"sistema")); }catch(e){} render(); scrollTo(0,0); },
   modgo(m){ ACT.mod(m); },
+  dpe(arg){ const i=arg.indexOf(":"), t=arg.slice(0,i), v=arg.slice(i+1); if(t==="f"){ S.ftab=v; ACT.mod("fact"); return; } S.fq=""; S.fEstado="todos"; S.fDest="todos"; if(t==="e") S.fEstado=v; if(t==="d") S.fDest=v; ACT.mod(allowed("pedidos")?"pedidos":"oper"); },
   logout(){ leaveScan(); ROLE=null; store.set(KEY_ROLE,null); S.drawer=null; S.modals=[]; render(); },
   open(f){ S.modals=[]; S.drawer=f; renderOverlay(); },
   closedrawer(){ S.drawer=null; renderOverlay(); },
@@ -14629,6 +14794,7 @@ const ACT = {
     closeModal(); render(); toast(kind==="entrega"?(res&&res.parcial?`Entrega parcial: ${res.total} de ${o.sc.length} cajas`:"Entrega confirmada con firma"):"Firma guardada"); },
   newpractice(){ const o=crearPractica(); S.mod="practica"; render(); toast(`Pedido de práctica ${o.folio} creado`); },
   delpractice(){ if(!ask("¿Borrar los pedidos de práctica?")) return; const fs=DB.ord.filter(o=>o.practice).map(o=>o.folio);
+    fs.forEach(f=>nubeTomb("ord",f)); DB.fac.filter(f=>f.ords.every(x=>fs.includes(x))).forEach(f=>nubeTomb("fac",f.id));
     DB.ord=DB.ord.filter(o=>!o.practice); DB.via.forEach(v=>{ v.ords=v.ords.filter(x=>!fs.includes(x)); }); DB.fac=DB.fac.filter(f=>!f.ords.every(x=>fs.includes(x))); saveDB(); render(); toast("Prácticas borradas"); },
   practdocs(f){ const o=ordOf(f); o.pr=o.pr||{}; o.pr.guia=true; o.pr.lab=true; saveDB(); ACT.labels(f,{dataset:{from:"sistema"}}); },
   practsalida(f){ const o=ordOf(f); if(!o.viaje||!viaOf(o.viaje)){ toast("Primero carga las cajas a un camión","bad"); return; } ACT.viasalida(o.viaje); },
@@ -14670,6 +14836,16 @@ const ACT = {
     o.seguro = v>0 ? {on:true,valor:v,file:S.segTmp||(o.seguro&&o.seguro.file)||null} : {on:false,valor:0};
     o.totals=calc(o.dest,o.items,o.seguro); S.segTmp=null; logEv("Pedidos","Seguro actualizado",`${o.folio} · ${v>0?money(o.totals.seguro):"sin seguro"}`); saveDB(); closeModal(); render(); toast(v>0?`Seguro: ${money(o.totals.seguro)}`:"Seguro quitado"); },
   segdl(f){ const o=ordOf(f), fl=o&&o.seguro&&o.seguro.file; if(!fl) return; download(fl.name, SANDBOX?`(Archivo adjunto: ${fl.name}, ${num(fl.size/1024,0)} KB. La descarga solo funciona abriendo el sistema en su propia página web.)`:dataUrlBlob(fl.data), fl.type); },
+  async nubeconn(){ const u=($("#nb-u")||{}).value||"", k=($("#nb-k")||{}).value||""; if(!u.trim()||!k.trim()){ toast("Captura la dirección y la llave","bad"); return; }
+    try{ const est=await nubeConectar(u,k);
+      if(est==="vacia"){ const n=await nubeSubirTodo(); render(); toast(`Conectado. Se subieron ${n} registros a la nube.`); }
+      else { render(); toast("Conectado. La nube ya tiene datos: elige Bajar o Subir."); } }
+    catch(e){ toast(e.message||String(e),"bad"); render(); } },
+  async nubesync(){ await nubeSync(); render(); toast(NUBE.estado==="ok"?"Sincronizado":NUBE.err,NUBE.estado==="ok"?"":"bad"); },
+  nubelink(){ copy(nubeLink()); },
+  async nubedown(){ if(!ask("Esto reemplaza los datos de este navegador con los de la nube")) return; try{ await nubeBajarTodo(); render(); toast("Datos de la nube cargados"); }catch(e){ toast(e.message||String(e),"bad"); } },
+  async nubeup(){ if(!ask("Esto sube todos tus datos y sobrescribe en la nube lo que coincida")) return; try{ const n=await nubeSubirTodo(); render(); toast(`Se subieron ${n} registros`); }catch(e){ toast(e.message||String(e),"bad"); } },
+  nubeoff(){ nubeDesconectar(); render(); toast("Desconectado de la nube"); },
   /* cotizador */
   qadd(){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); },
   pdel(a,el){ const i=+el.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } },
@@ -14811,6 +14987,7 @@ function takeScanHash(){
   const h=(location.hash||"").slice(1); let m;
   if(m=h.match(/^g\.([A-Za-z0-9-]+)$/)){ S.pendingGuia=m[1]; S.view="sistema"; S.mod="oper"; try{ history.replaceState(null,"","#sistema"); }catch(e){} return true; }
   if(m=h.match(/^t\.([A-Za-z0-9-]+)$/)){ S.view="rastreo"; S.track=m[1]; S.done=null; return true; }
+  if(m=h.match(/^nube\.([A-Za-z0-9_-]+)$/)){ try{ const c=JSON.parse(unb64u(m[1])); Object.assign(NUBE,{url:c.u,key:c.k,on:true,lastS:0,estado:"off"}); nubeSave(); S.joinCloud=true; }catch(e){} try{ history.replaceState(null,"","#sistema"); }catch(e){} S.view="sistema"; return true; }
   if(!h.startsWith("s.")) return false;
   S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
 }
@@ -14821,12 +14998,13 @@ function runPendingScan(){
   const r=doScan(S.pendingScan,"auto",{via:S.scan.via}); S.pendingScan=null; r.at=Date.now();
   S.scan.feed.unshift(r); if(r.o) S.scan.ord=r.o.folio; S.scanResult=r; S.noFocus=true; beep(r.ok);
 }
-window.addEventListener("hashchange",()=>{ if(takeScanHash()){ runPendingScan(); render(); } });
+function unirNube(){ S.joinCloud=false; nubeBajarTodo().then(()=>{ render(); toast("Conectado a la nube: ya ves los mismos datos que tus compañeros"); }).catch(e=>toast(e.message||String(e),"bad")); }
+window.addEventListener("hashchange",()=>{ if(takeScanHash()){ runPendingScan(); render(); if(S.joinCloud) unirNube(); } });
 (function boot(){
   if(takeScanHash()) runPendingScan();
   else { const h=(location.hash||"").slice(1);
     if(h==="escaner"){ S.view="sistema"; S.mod="scan"; } else if(["rastreo","sistema","cotizar"].includes(h)) S.view=h; }
-  render();
+  render(); if(S.joinCloud) unirNube();
 })();
 
 </script>

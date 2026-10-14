@@ -25,7 +25,7 @@ function modBitacora(){
 
 /* ==================== Configuración ==================== */
 function modConfig(){
-  const tabs=[["marca","Marca"],["tarifas","Tarifas y destinos"],["desc","Descuentos"],["reglas","Reglas"],["empresa","Empresa y fiscal"],["usuarios","Usuarios"],["integ","Integraciones"],["datos","Datos"]];
+  const tabs=[["marca","Marca"],["tarifas","Tarifas y destinos"],["desc","Descuentos"],["reglas","Reglas"],["empresa","Empresa y fiscal"],["usuarios","Usuarios"],["integ","Integraciones"],["nube","Nube"],["datos","Datos"]];
   const b=CFG.brand, E=CFG.empresa;
   const inp=(id,l,path,v,ex="")=>`<div><label for="${id}">${l}</label><input id="${id}" data-in="cfg" data-arg="${path}" value="${esc(v)}" ${ex}></div>`;
   let body="";
@@ -74,5 +74,6 @@ function modConfig(){
   ].map(([t,d,s])=>`<div class="card flat"><div style="display:flex;justify-content:space-between;gap:8px"><b>${t}</b><span class="pill ${s==="Listo en demo"?"ok":"warn"}">${s}</span></div><div class="sm mut" style="margin-top:6px">${d}</div></div>`).join("")}</div>`;
   if(S.cfgTab==="datos") body=`<div class="chips"><button class="btn dark" data-act="exportcfg">Exportar configuración</button><label class="btn sec" style="margin:0;text-transform:none;letter-spacing:0;font-size:15px;color:var(--c2)">Importar configuración<input type="file" id="cfg-file" data-ch="cfgfile" accept=".json" hidden></label><button class="btn sec" data-act="exportdb">Exportar toda la información</button><button class="btn sec" data-act="exportcsv">Pedidos (CSV)</button></div>
     <h3 style="margin:24px 0 8px">Reiniciar demo</h3><div class="chips"><button class="btn sec sm" data-act="resetdata">Restablecer datos de ejemplo</button><button class="btn sec sm" data-act="resetall" style="color:var(--bad)">Borrar todo y volver a valores de fábrica</button></div>`;
+  if(S.cfgTab==="nube") body=nubeConfigHTML();
   return `${ptitle("Configuración")}<div class="card"><div class="subtabs">${tabs.map(([k,t])=>`<button class="${S.cfgTab===k?"on":""}" data-act="cfgtab" data-arg="${k}">${t}</button>`).join("")}</div>${body}</div>`;
 }

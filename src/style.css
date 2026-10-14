@@ -262,3 +262,8 @@ details summary{padding:6px 0}
 .cc.past{opacity:.5}
 .cc.sel{border-color:var(--c1);box-shadow:0 0 0 3px color-mix(in srgb,var(--c1) 22%,transparent)}
 .cc.today b{color:var(--c1);text-decoration:underline}
+
+button.kpi{border:0;text-align:left;cursor:pointer;font:inherit;width:100%;transition:.15s} button.kpi:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,24,40,.08),0 12px 28px rgba(16,24,40,.12)}
+.bars button.brb{background:none;border:0;padding:3px 6px;margin:2px -6px;text-align:left;cursor:pointer;font:inherit;width:calc(100% + 12px);border-radius:8px;color:inherit}
+.bars button.brb:hover{background:var(--soft)}
+@media(max-width:600px){ .brand .pill.keep{display:inline-block} }

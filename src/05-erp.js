@@ -44,7 +44,14 @@ function envioResumen(o){
 const ptitle = (t,right) => `<div class="ptitle"><h2>${esc(t)}</h2><div style="margin-left:auto" class="chips">${right||""}</div></div>`;
 
 /* ==================== Panel general ==================== */
+function barBtn(label,val,max,cls,txt,act,arg){ return `<button class="br brb" data-act="${act}" data-arg="${esc(arg)}"><span>${esc(label)}</span><div class="tr"><i class="${cls||""}" style="width:${max?Math.max(2,val/max*100):0}%"></i></div><b class="mono r">${txt??val}</b></button>`; }
 function bar(label,val,max,cls,txt){ return `<div class="br"><span>${esc(label)}</span><div class="tr"><i class="${cls||""}" style="width:${max?Math.max(2,val/max*100):0}%"></i></div><b class="mono r">${txt??val}</b></div>`; }
+function dashPedidos(){
+  const l=DB.ord.filter(o=>!o.cancelado&&o.status!=="entregado").sort((a,b)=>b.createdAt-a.createdAt).slice(0,12);
+  return `<div class="card" style="margin-top:16px;padding:16px"><div class="h2">Revisar pedidos <span class="mut sm" style="font-weight:500">toca uno para ver todo su detalle</span><button class="btn sec sm" style="margin-left:auto" data-act="dpe" data-arg="e:todos">Ver todos</button></div>
+  <div class="scroll"><table class="rt"><thead><tr><th>Folio</th><th>Cliente</th><th>Destino</th><th>Estatus</th><th class="r">Cajas</th><th>Llega</th></tr></thead><tbody>
+  ${l.map(o=>{ const e=eta(o.dest,o.createdAt), n=o.sc.length, rec=n-stageCounts(o)[0]; return `<tr class="click" data-act="open" data-arg="${esc(o.folio)}"><td><b>${esc(o.folio)}</b>${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}</td><td>${esc(o.sol.empresa||o.sol.nombre)}</td><td>${esc(dest(o.dest).name)}</td><td>${badge(o)}</td><td class="r mono">${stIdx(o)>=1?`${rec}/${n}`:n}</td><td class="sm">${e?esc(etaText(e)):"por confirmar"}</td></tr>`; }).join("")||`<tr><td colspan="6" class="mut c" style="padding:20px">No hay pedidos en operación.</td></tr>`}</tbody></table></div></div>`;
+}
 function modDash(){
   const act = DB.ord.filter(o=>!o.cancelado);
   const porConf = act.filter(o=>o.status==="solicitado");
@@ -63,37 +70,39 @@ function modDash(){
   { const rp=DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.estado==="solicitada"); if(rp.length) alerts.push({k:"warn",t:`${rp.length} recolección(es) por confirmar`,s:`La más próxima: ${fshort(fromYmd(rp.map(o=>o.rec.fecha).sort()[0]))}`,a:"modgo",arg:"reco"}); }
   act.filter(o=>o.totals.est&&o.status==="solicitado").forEach(o=>alerts.push({k:"warn",t:`${o.folio} con medida especial`,s:"Validar precio antes de confirmar",a:"open",arg:o.folio}));
   DB.cli.filter(c=>c.pendiente).forEach(c=>alerts.push({k:"warn",t:`Cliente ${c.razon} sin datos fiscales`,s:"Completar RFC y régimen para facturar",a:"modgo",arg:"clientes"}));
-  const porEtapa = CFG.steps.map(s=>({t:s.t,n:act.filter(o=>o.status===s.k).length}));
+  const porEtapa = CFG.steps.map(s=>({k:s.k,t:s.t,n:act.filter(o=>o.status===s.k).length}));
   const maxE = Math.max(1,...porEtapa.map(x=>x.n));
-  const porDest = CFG.destinos.map(d=>({t:d.name,v:act.filter(o=>o.dest===d.id).reduce((s,o)=>s+o.totals.total,0),n:act.filter(o=>o.dest===d.id).length}));
+  const porDest = CFG.destinos.map(d=>({id:d.id,t:d.name,v:act.filter(o=>o.dest===d.id).reduce((s,o)=>s+o.totals.total,0),n:act.filter(o=>o.dest===d.id).length}));
   const maxD = Math.max(1,...porDest.map(x=>x.v));
   const tot=[0,0,0,0,0,0]; act.forEach(o=>stageCounts(o).forEach((v,i)=>tot[i]+=v)); const T=tot.reduce((a,b)=>a+b,0)||1;
   return `${ptitle("Panel general",`<span class="mut sm">${fday(Date.now())}</span>`)}
   <div class="kpis">
-    <div class="kpi w"><small>Por confirmar</small><b>${porConf.length}</b><span>pedidos nuevos</span></div>
-    <div class="kpi"><small>En operación</small><b>${enOp.length}</b><span>confirmados, sin entregar</span></div>
-    <div class="kpi b"><small>Cajas en ruta</small><b>${cajasRuta}</b><span>escaneadas en camión</span></div>
-    <div class="kpi g"><small>Entregados</small><b>${entreg}</b><span>pedidos completos</span></div>
-    <div class="kpi b"><small>Por cobrar</small><b>${money0(porCobrar)}</b><span>${emit.length} facturas abiertas</span></div>
-    <div class="kpi"><small>Vencido</small><b>${money0(vencido)}</b><span>cartera vencida</span></div>
+    <button class="kpi w" data-act="dpe" data-arg="e:solicitado"><small>Por confirmar</small><b>${porConf.length}</b><span>pedidos nuevos</span></button>
+    <button class="kpi" data-act="dpe" data-arg="e:operacion"><small>En operación</small><b>${enOp.length}</b><span>confirmados, sin entregar</span></button>
+    <button class="kpi b" data-act="dpe" data-arg="e:transito"><small>Cajas en ruta</small><b>${cajasRuta}</b><span>escaneadas en camión</span></button>
+    <button class="kpi g" data-act="dpe" data-arg="e:entregado"><small>Entregados</small><b>${entreg}</b><span>pedidos completos</span></button>
+    ${allowed("fact")?`<button class="kpi b" data-act="dpe" data-arg="f:cob"><small>Por cobrar</small><b>${money0(porCobrar)}</b><span>${emit.length} facturas abiertas</span></button>`:`<div class="kpi b"><small>Por cobrar</small><b>${money0(porCobrar)}</b><span>${emit.length} facturas abiertas</span></div>`}
+    ${allowed("fact")?`<button class="kpi" data-act="dpe" data-arg="f:fac"><small>Vencido</small><b>${money0(vencido)}</b><span>cartera vencida</span></button>`:`<div class="kpi"><small>Vencido</small><b>${money0(vencido)}</b><span>cartera vencida</span></div>`}
   </div>
   <div class="grid g2">
     <div class="card"><div class="h2">Requiere atención <span class="pill ${alerts.length?"red":"ok"}">${alerts.length}</span></div>
       ${alerts.length?alerts.slice(0,9).map(a=>`<div class="feed"><div class="it ${a.k}" style="justify-content:space-between"><span><b style="font-family:inherit">${esc(a.t)}</b><br><span class="xs">${esc(a.s)}</span></span><button class="btn sec sm" data-act="${a.a}" data-arg="${esc(a.arg)}">Abrir</button></div></div>`).join(""):`<div class="note ok">Todo en orden.</div>`}</div>
-    <div class="card"><div class="h2">Pedidos por etapa</div><div class="bars">${porEtapa.map(x=>bar(x.t,x.n,maxE,"")).join("")}</div>
+    <div class="card"><div class="h2">Pedidos por etapa</div><div class="bars">${porEtapa.map(x=>barBtn(x.t,x.n,maxE,"",x.n,"dpe","e:"+x.k)).join("")}</div>
       <div class="h2" style="margin-top:18px">Cajas por etapa de escaneo</div>
       <div class="stack">${[5,4,3,2,1,0].map(i=>tot[i]?`<i style="width:${tot[i]/T*100}%;background:${stageColor(i)}"></i>`:"").join("")}</div>
       <div class="legend">${[1,2,3,4,5,0].map(i=>`<span><i style="background:${stageColor(i)}"></i>${i?STAGES[i-1].t:"Sin escanear"}: ${tot[i]}</span>`).join("")}</div></div>
-    <div class="card"><div class="h2">Valor por destino</div><div class="bars">${porDest.map(x=>bar(`${x.t} (${x.n})`,x.v,maxD,"r",money0(x.v))).join("")}</div></div>
-    <div class="card"><div class="h2">Actividad reciente</div>${DB.log.slice(0,8).map(l=>`<div class="sm" style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(l.accion)}</b> <span class="mut">· ${esc(l.detalle)}</span><div class="xs mut">${fdate(l.at)} · ${esc(l.rol)}</div></div>`).join("")||`<div class="mut">Sin actividad.</div>`}</div>
-  </div>`;
+    <div class="card"><div class="h2">Valor por destino</div><div class="bars">${porDest.map(x=>barBtn(`${x.t} (${x.n})`,x.v,maxD,"r",money0(x.v),"dpe","d:"+x.id)).join("")}</div></div>
+    <div class="card"><div class="h2">Actividad reciente</div>${DB.log.slice(0,8).map(l=>{ const fo=(String(l.detalle).match(/ALR-\d{4}-\d{4}/)||[])[0]; return `<div class="sm" ${fo&&ordOf(fo)?`data-act="open" data-arg="${fo}" style="padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer" title="Abrir pedido"`:`style="padding:6px 0;border-bottom:1px solid var(--line)"`}><b>${esc(l.accion)}</b> <span class="mut">· ${esc(l.detalle)}</span><div class="xs mut">${fdate(l.at)} · ${esc(l.rol)}</div></div>`; }).join("")||`<div class="mut">Sin actividad.</div>`}</div>
+  </div>
+  ${dashPedidos()}`;
 }
 
 /* ==================== Pedidos ==================== */
 function modPedidos(){
   const q = S.fq.toLowerCase();
   const list = DB.ord.filter(o=>{
-    if(S.fEstado!=="todos" && (S.fEstado==="cancelado"?!o.cancelado:(o.cancelado||o.status!==S.fEstado))) return false;
+    if(S.fEstado==="operacion"){ if(o.cancelado||stIdx(o)<1||o.status==="entregado") return false; }
+    else if(S.fEstado!=="todos" && (S.fEstado==="cancelado"?!o.cancelado:(o.cancelado||o.status!==S.fEstado))) return false;
     if(S.fDest!=="todos" && o.dest!==S.fDest) return false;
     if(q && !(o.folio+o.sol.nombre+o.sol.empresa+o.dst.nombre+(o.guia||"")).toLowerCase().includes(q)) return false;
     return true;
@@ -102,7 +111,7 @@ function modPedidos(){
   <div class="card" style="padding:16px">
     <div class="toolbar">
       <label for="f-q" style="display:none">Buscar</label><input id="f-q" data-in="fq" placeholder="Buscar folio, cliente, guía…" value="${esc(S.fq)}">
-      <label for="f-est" style="display:none">Estatus</label><select id="f-est" data-ch="fEstado"><option value="todos">Todos los estatus</option>${CFG.steps.map(s=>`<option value="${s.k}" ${S.fEstado===s.k?"selected":""}>${esc(s.t)}</option>`).join("")}<option value="cancelado" ${S.fEstado==="cancelado"?"selected":""}>Cancelados</option></select>
+      <label for="f-est" style="display:none">Estatus</label><select id="f-est" data-ch="fEstado"><option value="todos">Todos los estatus</option><option value="operacion" ${S.fEstado==="operacion"?"selected":""}>En operación (aceptados, sin entregar)</option>${CFG.steps.map(s=>`<option value="${s.k}" ${S.fEstado===s.k?"selected":""}>${esc(s.t)}</option>`).join("")}<option value="cancelado" ${S.fEstado==="cancelado"?"selected":""}>Cancelados</option></select>
       <label for="f-dst" style="display:none">Destino</label><select id="f-dst" data-ch="fDest"><option value="todos">Todos los destinos</option>${CFG.destinos.map(d=>`<option value="${d.id}" ${S.fDest===d.id?"selected":""}>${esc(d.name)}</option>`).join("")}</select>
       <span class="mut sm" style="margin-left:auto">${list.length} pedido(s)</span>
       <button class="btn sec sm" data-act="exportorders">Exportar</button>

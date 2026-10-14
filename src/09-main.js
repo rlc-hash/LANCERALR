@@ -23,6 +23,7 @@ const ACT = {
   go(v){ leaveScan(); if(v==="sistema") S.back=null; setView(v); },
   mod(m){ if(m!=="scan") leaveScan(); S.mod=m; S.drawer=null; S.modals=[]; try{ history.replaceState(null,"","#"+(m==="scan"?"escaner":"sistema")); }catch(e){} render(); scrollTo(0,0); },
   modgo(m){ ACT.mod(m); },
+  dpe(arg){ const i=arg.indexOf(":"), t=arg.slice(0,i), v=arg.slice(i+1); if(t==="f"){ S.ftab=v; ACT.mod("fact"); return; } S.fq=""; S.fEstado="todos"; S.fDest="todos"; if(t==="e") S.fEstado=v; if(t==="d") S.fDest=v; ACT.mod(allowed("pedidos")?"pedidos":"oper"); },
   logout(){ leaveScan(); ROLE=null; store.set(KEY_ROLE,null); S.drawer=null; S.modals=[]; render(); },
   open(f){ S.modals=[]; S.drawer=f; renderOverlay(); },
   closedrawer(){ S.drawer=null; renderOverlay(); },
@@ -89,6 +90,7 @@ const ACT = {
     closeModal(); render(); toast(kind==="entrega"?(res&&res.parcial?`Entrega parcial: ${res.total} de ${o.sc.length} cajas`:"Entrega confirmada con firma"):"Firma guardada"); },
   newpractice(){ const o=crearPractica(); S.mod="practica"; render(); toast(`Pedido de práctica ${o.folio} creado`); },
   delpractice(){ if(!ask("¿Borrar los pedidos de práctica?")) return; const fs=DB.ord.filter(o=>o.practice).map(o=>o.folio);
+    fs.forEach(f=>nubeTomb("ord",f)); DB.fac.filter(f=>f.ords.every(x=>fs.includes(x))).forEach(f=>nubeTomb("fac",f.id));
     DB.ord=DB.ord.filter(o=>!o.practice); DB.via.forEach(v=>{ v.ords=v.ords.filter(x=>!fs.includes(x)); }); DB.fac=DB.fac.filter(f=>!f.ords.every(x=>fs.includes(x))); saveDB(); render(); toast("Prácticas borradas"); },
   practdocs(f){ const o=ordOf(f); o.pr=o.pr||{}; o.pr.guia=true; o.pr.lab=true; saveDB(); ACT.labels(f,{dataset:{from:"sistema"}}); },
   practsalida(f){ const o=ordOf(f); if(!o.viaje||!viaOf(o.viaje)){ toast("Primero carga las cajas a un camión","bad"); return; } ACT.viasalida(o.viaje); },
@@ -130,6 +132,16 @@ const ACT = {
     o.seguro = v>0 ? {on:true,valor:v,file:S.segTmp||(o.seguro&&o.seguro.file)||null} : {on:false,valor:0};
     o.totals=calc(o.dest,o.items,o.seguro); S.segTmp=null; logEv("Pedidos","Seguro actualizado",`${o.folio} · ${v>0?money(o.totals.seguro):"sin seguro"}`); saveDB(); closeModal(); render(); toast(v>0?`Seguro: ${money(o.totals.seguro)}`:"Seguro quitado"); },
   segdl(f){ const o=ordOf(f), fl=o&&o.seguro&&o.seguro.file; if(!fl) return; download(fl.name, SANDBOX?`(Archivo adjunto: ${fl.name}, ${num(fl.size/1024,0)} KB. La descarga solo funciona abriendo el sistema en su propia página web.)`:dataUrlBlob(fl.data), fl.type); },
+  async nubeconn(){ const u=($("#nb-u")||{}).value||"", k=($("#nb-k")||{}).value||""; if(!u.trim()||!k.trim()){ toast("Captura la dirección y la llave","bad"); return; }
+    try{ const est=await nubeConectar(u,k);
+      if(est==="vacia"){ const n=await nubeSubirTodo(); render(); toast(`Conectado. Se subieron ${n} registros a la nube.`); }
+      else { render(); toast("Conectado. La nube ya tiene datos: elige Bajar o Subir."); } }
+    catch(e){ toast(e.message||String(e),"bad"); render(); } },
+  async nubesync(){ await nubeSync(); render(); toast(NUBE.estado==="ok"?"Sincronizado":NUBE.err,NUBE.estado==="ok"?"":"bad"); },
+  nubelink(){ copy(nubeLink()); },
+  async nubedown(){ if(!ask("Esto reemplaza los datos de este navegador con los de la nube")) return; try{ await nubeBajarTodo(); render(); toast("Datos de la nube cargados"); }catch(e){ toast(e.message||String(e),"bad"); } },
+  async nubeup(){ if(!ask("Esto sube todos tus datos y sobrescribe en la nube lo que coincida")) return; try{ const n=await nubeSubirTodo(); render(); toast(`Se subieron ${n} registros`); }catch(e){ toast(e.message||String(e),"bad"); } },
+  nubeoff(){ nubeDesconectar(); render(); toast("Desconectado de la nube"); },
   /* cotizador */
   qadd(){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); },
   pdel(a,el){ const i=+el.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } },
@@ -271,6 +283,7 @@ function takeScanHash(){
   const h=(location.hash||"").slice(1); let m;
   if(m=h.match(/^g\.([A-Za-z0-9-]+)$/)){ S.pendingGuia=m[1]; S.view="sistema"; S.mod="oper"; try{ history.replaceState(null,"","#sistema"); }catch(e){} return true; }
   if(m=h.match(/^t\.([A-Za-z0-9-]+)$/)){ S.view="rastreo"; S.track=m[1]; S.done=null; return true; }
+  if(m=h.match(/^nube\.([A-Za-z0-9_-]+)$/)){ try{ const c=JSON.parse(unb64u(m[1])); Object.assign(NUBE,{url:c.u,key:c.k,on:true,lastS:0,estado:"off"}); nubeSave(); S.joinCloud=true; }catch(e){} try{ history.replaceState(null,"","#sistema"); }catch(e){} S.view="sistema"; return true; }
   if(!h.startsWith("s.")) return false;
   S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
 }
@@ -281,10 +294,11 @@ function runPendingScan(){
   const r=doScan(S.pendingScan,"auto",{via:S.scan.via}); S.pendingScan=null; r.at=Date.now();
   S.scan.feed.unshift(r); if(r.o) S.scan.ord=r.o.folio; S.scanResult=r; S.noFocus=true; beep(r.ok);
 }
-window.addEventListener("hashchange",()=>{ if(takeScanHash()){ runPendingScan(); render(); } });
+function unirNube(){ S.joinCloud=false; nubeBajarTodo().then(()=>{ render(); toast("Conectado a la nube: ya ves los mismos datos que tus compañeros"); }).catch(e=>toast(e.message||String(e),"bad")); }
+window.addEventListener("hashchange",()=>{ if(takeScanHash()){ runPendingScan(); render(); if(S.joinCloud) unirNube(); } });
 (function boot(){
   if(takeScanHash()) runPendingScan();
   else { const h=(location.hash||"").slice(1);
     if(h==="escaner"){ S.view="sistema"; S.mod="scan"; } else if(["rastreo","sistema","cotizar"].includes(h)) S.view=h; }
-  render();
+  render(); if(S.joinCloud) unirNube();
 })();

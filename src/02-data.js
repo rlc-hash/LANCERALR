@@ -1,6 +1,6 @@
 /* ==================== Base de datos (localStorage) ==================== */
 let DB = null;
-const saveDB = () => store.set(KEY_DB, DB);
+const saveDB = () => { store.set(KEY_DB, DB); try{ nubePush(); }catch(e){} };
 const cliOf = id => DB.cli.find(c=>c.id===id) || {id, razon:"(cliente eliminado)", rfc:"", nombre:""};
 const ordOf = f => DB.ord.find(o=>o.folio===f);
 const facOf = id => DB.fac.find(x=>x.id===id);
@@ -11,10 +11,14 @@ const stLabel = k => (CFG.steps.find(s=>s.k===k)||{t:k}).t;
 let ROLE = store.get(KEY_ROLE) || null;
 
 function logEv(mod, accion, detalle){
-  DB.log.unshift({at:Date.now(), rol:ROLE?ROLES[ROLE].t:"Cliente/Sistema", mod, accion, detalle:detalle||""});
+  DB.log.unshift({at:Date.now(), id:Math.random().toString(36).slice(2,8), rol:ROLE?ROLES[ROLE].t:"Cliente/Sistema", mod, accion, detalle:detalle||""});
   if(DB.log.length>600) DB.log.length=600;
 }
-function nextSeq(k, start){ DB.seq[k] = (DB.seq[k]||start-1)+1; return DB.seq[k]; }
+function nextSeq(k, start){
+  let on=false; try{ on=nubeOn(); }catch(e){}
+  if(on){ const v=nubeSeqRemoto(k,start); if(v!=null){ DB.seq[k]=Math.max(DB.seq[k]||0,v); return v; } }
+  DB.seq[k] = (DB.seq[k]||start-1)+1; return DB.seq[k];
+}
 
 /* ---- cajas escaneadas: cadena de dígitos, un dígito por caja (0 = sin escanear … 5 = entregada) ---- */
 const boxStage = (o,n) => +o.sc.charAt(n-1);
@@ -55,7 +59,7 @@ function createOrder(q){
   o.seguro = q.serv.seguro ? {on:true, valor:+q.seguro.valor||0, file:q.seguro.file||null} : {on:false,valor:0};
   o.rec = q.serv.recoleccion ? {on:true, dir:q.rec.dir.trim(), contacto:{nombre:q.rec.contacto.nombre.trim(),tel:q.rec.contacto.tel.trim()}, pregunta:q.rec.pregunta.trim(), instr:q.rec.instr.trim(), fecha:q.rec.fecha, desde:q.rec.desde, hasta:q.rec.hasta, estado:"solicitada", solicitadaAt:Date.now()} : {on:false};
   o.totals = calc(o.dest, items, o.seguro); o.sc = "0".repeat(o.totals.piezas);
-  DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} cajas · ${money(o.totals.total)}`); saveDB();
+  DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} caja${o.totals.piezas===1?"":"s"} · ${money(o.totals.total)}`); saveDB();
   const mis=store.get("alr_mis_v1")||[]; mis.unshift(o.folio); store.set("alr_mis_v1",mis.slice(0,20));
   return o;
 }

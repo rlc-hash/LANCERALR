@@ -11,7 +11,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v8", APP_DATE = "13 oct 2026";
+const APP_VERSION = "v9", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -64,7 +64,7 @@ const DEFAULT_CFG = () => ({
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
 (function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones","seguroPct","seguroIva","seguroClave","recoleccion"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
-const saveCfg = () => store.set(KEY_CFG, CFG);
+const saveCfg = () => { store.set(KEY_CFG, CFG); try{ nubePush(); }catch(e){} };
 
 /* ==================== Etapas de escaneo ==================== */
 const STAGES = [
