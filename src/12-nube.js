@@ -1,9 +1,11 @@
-/* ==================== Nube: datos compartidos entre dispositivos (Supabase) ==================== */
-/* Cada navegador guarda su copia; con la nube conectada, todos escriben y leen del mismo lugar. */
-const NUBE = Object.assign({url:"",key:"",on:false,lastS:0,dev:Math.random().toString(36).slice(2,8),estado:"off",err:"",at:0,every:5000}, store.get("alr_nube_v1")||{});
+/* ==================== Nube: datos compartidos entre dispositivos ==================== */
+/* Cada navegador guarda su copia; con la nube conectada todos leen y escriben en el mismo lugar.
+   Dos opciones: Google Sheets (recomendada, vive en una hoja de cálculo propia) o Supabase (avanzada). */
+const NUBE = Object.assign({tipo:"sheets",url:"",key:"",on:false,lastS:0,dev:Math.random().toString(36).slice(2,8),estado:"off",err:"",at:0,every:0}, store.get("alr_nube_v1")||{});
 const NH = {}, NTOMB = [];
 let nbusy=false, ndeb=null;
 const COLS = {ord:"folio", cli:"id", fac:"id", via:"id", rem:"folio"};
+const NUBE_SCRIPT = __APPS_SCRIPT__;
 const NUBE_SQL = `create table if not exists alr_items(
   id text primary key, kind text not null, data jsonb not null,
   u bigint not null default 0, s bigint not null default 0);
@@ -23,8 +25,9 @@ alter table alr_seq enable row level security;
 create policy "alr_items_todo" on alr_items for all using (true) with check (true);
 create policy "alr_seq_todo" on alr_seq for all using (true) with check (true);`;
 
-function nubeSave(){ store.set("alr_nube_v1",{url:NUBE.url,key:NUBE.key,on:NUBE.on,lastS:NUBE.lastS,dev:NUBE.dev}); }
+function nubeSave(){ store.set("alr_nube_v1",{tipo:NUBE.tipo,url:NUBE.url,key:NUBE.key,on:NUBE.on,lastS:NUBE.lastS,dev:NUBE.dev}); }
 function nubeOn(){ return !!(NUBE.on && NUBE.url && NUBE.key); }
+function nubeEvery(){ return NUBE.every || (NUBE.tipo==="sheets"?10000:5000); }
 function nubeBase(){ return NUBE.url.replace(/\/+$/,"")+"/rest/v1"; }
 function nubeHdr(extra){ return {apikey:NUBE.key, Authorization:"Bearer "+NUBE.key, "Content-Type":"application/json", ...(extra||{})}; }
 function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return h+":"+s.length; }
@@ -33,6 +36,56 @@ function saveLocalOnly(){ store.set(KEY_DB,DB); store.set(KEY_CFG,CFG); }
 function b64u(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
 function unb64u(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; return decodeURIComponent(escape(atob(s))); }
 
+/* ---- transporte: Google Sheets (Apps Script) o Supabase ---- */
+const SHEETS_MAX = 780000;   // tope de texto por registro en la hoja (20 celdas de 40,000)
+function nubeSlim(r){
+  const s=JSON.stringify(r.data); if(s.length<=SHEETS_MAX) return s;
+  const d=JSON.parse(s); if(d.seguro&&d.seguro.file&&d.seguro.file.data) d.seguro.file={...d.seguro.file,data:null,omitido:true};
+  return JSON.stringify(d);
+}
+async function tSheets(method, body){
+  const b={key:NUBE.key,...body}; let r;
+  if(method==="GET") r=await fetch(NUBE.url+(NUBE.url.includes("?")?"&":"?")+"d="+encodeURIComponent(JSON.stringify(b)));
+  else r=await fetch(NUBE.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(b)});
+  if(!r.ok) throw new Error("Google respondió "+r.status);
+  let j; try{ j=await r.json(); }catch(e){ throw new Error("La dirección no responde como el script. ¿Implementaste como 'Cualquier usuario'?"); }
+  if(!j.ok) throw new Error(j.error==="clave"?"La clave no coincide con la que pusiste en el script":"El script respondió: "+j.error);
+  return j;
+}
+async function tGet(since){
+  if(NUBE.tipo==="sheets"){ const j=await tSheets("GET",{op:"pull",since}); return j.rows.map(r=>({id:r.id,kind:r.kind,u:r.u,s:r.s,data:JSON.parse(r.data)})); }
+  const r=await fetch(`${nubeBase()}/alr_items?s=gt.${since}&order=s.asc&limit=3000`,{headers:nubeHdr()});
+  if(!r.ok) throw new Error("La nube respondió "+r.status+(r.status===401||r.status===403?" (revisa la llave)":r.status===404?" (¿ya corriste el SQL?)":""));
+  return r.json();
+}
+async function tPush(rows){
+  if(NUBE.tipo==="sheets"){ await tSheets("POST",{op:"push",rows:rows.map(r=>({id:r.id,kind:r.kind,u:r.u,data:nubeSlim(r)}))}); return; }
+  const r=await fetch(`${nubeBase()}/alr_items?on_conflict=id`,{method:"POST",headers:nubeHdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows)});
+  if(!r.ok) throw new Error("No se pudo guardar en la nube ("+r.status+")");
+}
+async function tCount(){
+  if(NUBE.tipo==="sheets") return (await tSheets("GET",{op:"ping"})).n;
+  const r=await fetch(`${nubeBase()}/alr_items?select=id&limit=1`,{headers:nubeHdr()});
+  if(!r.ok) throw new Error("No se pudo conectar ("+r.status+"). "+(r.status===404?"Corre primero el SQL en Supabase.":"Revisa la dirección y la llave."));
+  return (await r.json()).length;
+}
+async function tSeqSet(rows){
+  if(!rows.length) return;
+  if(NUBE.tipo==="sheets"){ await tSheets("POST",{op:"seqset",rows}); return; }
+  const r=await fetch(`${nubeBase()}/alr_seq?on_conflict=k`,{method:"POST",headers:nubeHdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows)});
+  if(!r.ok) throw new Error("No se pudieron subir los folios ("+r.status+")");
+}
+function nubeSeqRemoto(k,start){
+  try{
+    const x=new XMLHttpRequest();
+    if(NUBE.tipo==="sheets"){ x.open("GET",NUBE.url+(NUBE.url.includes("?")?"&":"?")+"d="+encodeURIComponent(JSON.stringify({key:NUBE.key,op:"seq",k,start})),false); x.send(); }
+    else { x.open("POST",nubeBase()+"/rpc/next_seq",false); Object.entries(nubeHdr()).forEach(([a,b])=>x.setRequestHeader(a,b)); x.send(JSON.stringify({p_k:k,p_start:start})); }
+    if(x.status>=200&&x.status<300){ const v=JSON.parse(x.responseText); const n=NUBE.tipo==="sheets"?(v.ok?v.v:null):v; if(typeof n==="number") return n; }
+  }catch(e){}
+  return null;
+}
+
+/* ---- datos locales <-> registros de la nube ---- */
 function nubeLocal(){
   const out=[];
   Object.entries(COLS).forEach(([k,f])=>DB[k].forEach(x=>out.push({id:k+":"+x[f],kind:k,data:x})));
@@ -59,9 +112,7 @@ function nubeApply(row){
   NH[id]=dataHash(d); return true;
 }
 async function nubePull(full){
-  const r=await fetch(`${nubeBase()}/alr_items?s=gt.${full?0:NUBE.lastS}&order=s.asc&limit=3000`,{headers:nubeHdr()});
-  if(!r.ok) throw new Error("La nube respondió "+r.status+(r.status===401||r.status===403?" (revisa la llave)":r.status===404?" (¿ya corriste el SQL?)":""));
-  const rows=await r.json(); let changed=false, maxS=NUBE.lastS;
+  const rows=await tGet(full?0:NUBE.lastS); let changed=false, maxS=NUBE.lastS;
   rows.forEach(row=>{ if(row.s>maxS) maxS=row.s; if(nubeApply(row)) changed=true; });
   NUBE.lastS=maxS; nubeSave(); if(changed) saveLocalOnly();
   return changed;
@@ -71,10 +122,13 @@ async function nubeSend(){
   if(!dirty.length && !NTOMB.length) return 0;
   const now=Date.now(); dirty.forEach(({it})=>{ it.data._u=now; });
   const rows=dirty.map(({it})=>({id:it.id,kind:it.kind,data:it.data,u:now})).concat(NTOMB.map(t=>({id:t.id,kind:t.kind,data:{_del:true,_u:now},u:now})));
-  for(let i=0;i<rows.length;i+=80){
-    const r=await fetch(`${nubeBase()}/alr_items?on_conflict=id`,{method:"POST",headers:nubeHdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(rows.slice(i,i+80))});
-    if(!r.ok) throw new Error("No se pudo guardar en la nube ("+r.status+")");
+  let lote=[], tam=0;
+  for(const r of rows){
+    const t=JSON.stringify(r.data).length;
+    if(lote.length && (tam+t>250000 || lote.length>=60)){ await tPush(lote); lote=[]; tam=0; }
+    lote.push(r); tam+=t;
   }
+  if(lote.length) await tPush(lote);
   dirty.forEach(({it,h})=>{ NH[it.id]=h; }); NTOMB.forEach(t=>{ NH[t.id]="del"; }); NTOMB.length=0; saveLocalOnly();
   return rows.length;
 }
@@ -97,22 +151,14 @@ function nubeBadge(){
   el.style.display=""; el.className="pill keep "+(NUBE.estado==="ok"?"ok":"bad"); el.textContent=NUBE.estado==="ok"?"☁ En línea":"☁ Sin conexión";
   el.title=NUBE.err||("Última sincronización: "+fdate(NUBE.at));
 }
-function nubeSeqRemoto(k,start){
-  try{ const x=new XMLHttpRequest(); x.open("POST",nubeBase()+"/rpc/next_seq",false);
-    Object.entries(nubeHdr()).forEach(([a,b])=>x.setRequestHeader(a,b)); x.send(JSON.stringify({p_k:k,p_start:start}));
-    if(x.status>=200&&x.status<300){ const v=JSON.parse(x.responseText); if(typeof v==="number") return v; } }catch(e){}
-  return null;
-}
-async function nubeConectar(url,key){
-  Object.assign(NUBE,{url:url.trim().replace(/\/+$/,""),key:key.trim(),on:true,lastS:0,estado:"off",err:""}); nubeSave();
-  const r=await fetch(`${nubeBase()}/alr_items?select=id&limit=1`,{headers:nubeHdr()});
-  if(!r.ok){ NUBE.on=false; nubeSave(); throw new Error("No se pudo conectar ("+r.status+"). "+(r.status===404?"Corre primero el SQL en Supabase.":"Revisa la dirección y la llave.")); }
-  const rows=await r.json(); return rows.length===0 ? "vacia" : "con-datos";
+async function nubeConectar(url,key,tipo){
+  Object.assign(NUBE,{tipo:tipo||NUBE.tipo,url:url.trim().replace(/\/+$/,""),key:key.trim(),on:true,lastS:0,estado:"off",err:""}); nubeSave();
+  try{ const n=await tCount(); return n===0?"vacia":"con-datos"; }
+  catch(e){ NUBE.on=false; nubeSave(); throw e; }
 }
 async function nubeSubirTodo(){
   Object.keys(NH).forEach(k=>delete NH[k]); const n=await nubeSend();
-  const seq=Object.entries(DB.seq).filter(([k,v])=>typeof v==="number").map(([k,v])=>({k,v}));
-  if(seq.length){ const r=await fetch(`${nubeBase()}/alr_seq?on_conflict=k`,{method:"POST",headers:nubeHdr({Prefer:"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify(seq)}); if(!r.ok) throw new Error("No se pudieron subir los folios ("+r.status+")"); }
+  await tSeqSet(Object.entries(DB.seq).filter(([k,v])=>typeof v==="number").map(([k,v])=>({k,v})));
   await nubePull(true); NUBE.estado="ok"; NUBE.at=Date.now(); nubeBadge(); return n;
 }
 async function nubeBajarTodo(){
@@ -121,24 +167,33 @@ async function nubeBajarTodo(){
   await nubePull(true); NUBE.estado="ok"; NUBE.at=Date.now(); saveLocalOnly(); nubeBadge();
 }
 function nubeDesconectar(){ NUBE.on=false; NUBE.estado="off"; nubeSave(); nubeBadge(); }
-function nubeLink(){ return `${qrBase()}#nube.${b64u(JSON.stringify({u:NUBE.url,k:NUBE.key}))}`; }
-function nubeLoop(){ Promise.resolve(nubeSync()).finally(()=>setTimeout(nubeLoop,NUBE.every||5000)); }
+function nubeLink(){ return `${qrBase()}#nube.${b64u(JSON.stringify({t:NUBE.tipo,u:NUBE.url,k:NUBE.key}))}`; }
+function nubeLoop(){ Promise.resolve(nubeSync()).finally(()=>setTimeout(nubeLoop,nubeEvery())); }
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) nubeSync(); });
 window.addEventListener("online",()=>nubeSync());
 setTimeout(nubeLoop,1500);
 
 /* ---- pantalla de configuración ---- */
 function nubeConfigHTML(){
-  const on=nubeOn(), st=on?(NUBE.estado==="ok"?`<span class="pill ok">☁ En línea</span> <span class="xs mut">última sincronización ${fdate(NUBE.at)}</span>`:`<span class="pill bad">☁ Sin conexión</span> <span class="xs">${esc(NUBE.err)}</span>`):`<span class="pill">Sin conectar</span>`;
+  const on=nubeOn(), sh=NUBE.tipo==="sheets";
+  const st=on?(NUBE.estado==="ok"?`<span class="pill ok">☁ En línea</span> <span class="xs mut">última sincronización ${fdate(NUBE.at)}</span>`:`<span class="pill bad">☁ Sin conexión</span> <span class="xs">${esc(NUBE.err)}</span>`):`<span class="pill">Sin conectar</span>`;
+  const sheetsPasos=`<ol class="sm" style="margin:0 0 10px 18px;padding:0"><li>En Google Sheets crea una <b>hoja de cálculo nueva</b> (en la cuenta de Google que tú elijas) y ponle nombre, por ejemplo "Datos ALR".</li>
+    <li>Menú <b>Extensiones → Apps Script</b>. Borra lo que haya, pega el código de abajo y guarda.</li>
+    <li>Engrane <b>Configuración del proyecto → Propiedades de la secuencia de comandos → Agregar</b>: nombre <code>CLAVE</code>, valor una contraseña que tú inventes.</li>
+    <li><b>Implementar → Nueva implementación → Aplicación web</b>. Ejecutar como: <b>Yo</b>. Quién tiene acceso: <b>Cualquier usuario</b>. Autoriza los permisos y copia la <b>URL</b>.</li>
+    <li>Pega aquí la URL y la clave, y presiona <b>Probar y conectar</b>. Cada pedido, caja y folio quedará guardado también como filas en esa hoja.</li></ol>
+    <textarea id="nb-code" rows="8" readonly style="font:12px/1.4 ui-monospace,Menlo,monospace">${esc(NUBE_SCRIPT)}</textarea>
+    <div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="copyfield" data-arg="nb-code">Copiar código del script</button></div>`;
+  const sbPasos=`<ol class="sm" style="margin:0 0 10px 18px;padding:0"><li>Crea un proyecto en supabase.com (uno propio para ALR).</li><li><b>SQL Editor</b>: pega el texto de abajo y presiona <b>Run</b>.</li><li><b>Project Settings → API</b>: copia la <b>Project URL</b> y la llave <b>anon public</b>.</li></ol>
+    <textarea id="nb-sql" rows="7" readonly style="font:12px/1.4 ui-monospace,Menlo,monospace">${esc(NUBE_SQL)}</textarea><div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="copyfield" data-arg="nb-sql">Copiar SQL</button></div>`;
   return `<div class="note info sm" style="margin-bottom:14px">Hoy cada navegador guarda <b>su propia copia</b> de los datos; por eso dos usuarios ven números distintos. Al conectar la nube, todos leen y escriben en el mismo lugar y los pedidos, el calendario y las cajas quedan vinculados entre dispositivos.</div>
   <div style="margin-bottom:14px">${st}</div>
-  <div class="row2"><div><label for="nb-u">Dirección del proyecto (Supabase)</label><input id="nb-u" value="${esc(NUBE.url)}" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off"></div>
-  <div><label for="nb-k">Llave pública (anon key)</label><input id="nb-k" value="${esc(NUBE.key)}" placeholder="eyJhbGciOi…" autocomplete="off"></div></div>
+  <div class="chips" style="margin-bottom:12px"><label class="chk" style="margin:0"><input type="radio" name="nbt" data-ch="nubetipo" value="sheets" ${sh?"checked":""}><span><b>Google Sheets</b> <span class="pill ok">recomendado</span><br><span class="mut sm">Los datos viven en una hoja de cálculo tuya</span></span></label>
+    <label class="chk" style="margin:0"><input type="radio" name="nbt" data-ch="nubetipo" value="supabase" ${sh?"":"checked"}><span><b>Supabase</b> <span class="mut sm">(avanzado)</span><br><span class="mut sm">Base de datos propia</span></span></label></div>
+  <div class="row2"><div><label for="nb-u">${sh?"URL de la aplicación web (Apps Script)":"Dirección del proyecto (Supabase)"}</label><input id="nb-u" value="${esc(NUBE.url)}" placeholder="${sh?"https://script.google.com/macros/s/…/exec":"https://xxxxxxxx.supabase.co"}" autocomplete="off"></div>
+  <div><label for="nb-k">${sh?"Clave (la que pusiste en el script)":"Llave pública (anon key)"}</label><input id="nb-k" value="${esc(NUBE.key)}" placeholder="${sh?"tu contraseña":"eyJhbGciOi…"}" autocomplete="off"></div></div>
   <div class="chips" style="margin-top:12px"><button class="btn" data-act="nubeconn">${on?"Reconectar":"Probar y conectar"}</button>
     ${on?`<button class="btn sec" data-act="nubesync">Sincronizar ahora</button><button class="btn sec" data-act="nubelink">Copiar enlace para mis compañeros</button><button class="btn sec" data-act="nubedown">Bajar datos de la nube</button><button class="btn sec" data-act="nubeup">Subir mis datos a la nube</button><button class="btn ghost" style="color:var(--bad)" data-act="nubeoff">Desconectar</button>`:""}</div>
-  <h3 style="margin:22px 0 8px">Preparar Supabase (una sola vez)</h3>
-  <ol class="sm" style="margin:0 0 10px 18px;padding:0"><li>Crea un proyecto gratis en supabase.com.</li><li>Entra a <b>SQL Editor</b>, pega el texto de abajo y ejecútalo (<b>Run</b>).</li><li>En <b>Project Settings → API</b> copia la <b>Project URL</b> y la llave <b>anon public</b>, y pégalas arriba.</li><li>Presiona <b>Probar y conectar</b>. Después usa <b>Copiar enlace para mis compañeros</b>: quien lo abra queda conectado.</li></ol>
-  <textarea id="nb-sql" rows="9" readonly style="font:12px/1.4 ui-monospace,Menlo,monospace">${esc(NUBE_SQL)}</textarea>
-  <div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="copyfield" data-arg="nb-sql">Copiar SQL</button></div>
-  <div class="note sm" style="margin-top:14px">Esta conexión es de demostración: cualquiera con el enlace puede leer y escribir los datos. Para producción se agregan usuarios con contraseña y permisos por perfil.</div>`;
+  <h3 style="margin:22px 0 8px">Preparar ${sh?"Google Sheets":"Supabase"} (una sola vez)</h3>${sh?sheetsPasos:sbPasos}
+  <div class="note sm" style="margin-top:14px">${sh?"Google Sheets sirve para esta etapa de pruebas y para operaciones chicas: cada sincronización tarda de 1 a 3 segundos y Google limita el tiempo diario de ejecución. Para operación diaria con muchos usuarios se pasa a una base de datos.":"Esta conexión es de demostración."} Cualquiera con el enlace puede leer y escribir los datos: para producción se agregan usuarios con contraseña y permisos por perfil.</div>`;
 }

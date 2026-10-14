@@ -5,6 +5,8 @@ R = pathlib.Path(__file__).parent
 S = R/"src"
 rd = lambda p: (S/p).read_text()
 app = "\n".join(rd(f) for f in ["00-logo.js","01-core.js","02-data.js","03-docs.js","04-ui.js","05-erp.js","06-ops.js","07-fin.js","08-admin.js","10-oper.js","11-reco.js","12-nube.js","09-main.js"])
+import json
+app = app.replace("__APPS_SCRIPT__", json.dumps((R/"docs/apps-script/Code.gs").read_text()))
 app = '"use strict";\n' + app.replace('"use strict";\n','',1)
 head = '''<!doctype html>
 <html lang="es-MX">

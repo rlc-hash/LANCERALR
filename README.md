@@ -29,7 +29,7 @@ Pensada para una fletera que hoy lo hace todo a mano: **un toque por pedido, no 
 - **Conteo:** confirmación de cajas en recepción y en entrega, corrección de conteo con motivo y entrega parcial.
 
 ## Datos compartidos (v9)
-Ver `docs/NUBE.md`. Con la nube conectada (Supabase gratis), todos los usuarios ven los mismos pedidos, calendario y cajas. El panel general es interactivo: cada número, barra y fila abre el detalle.
+Ver `docs/NUBE.md`. Con la nube conectada (Google Sheets: tu propio Excel en Drive; Supabase opcional), todos los usuarios ven los mismos pedidos, calendario y cajas. El panel general es interactivo: cada número, barra y fila abre el detalle.
 
 ## Pendientes con ALR
 Logo oficial en alta resolución · azul de marca · razón social y RFC reales · factor volumétrico (556 kg/m³ es inferido) · regla para medidas especiales · tabla de recolección/entrega · descuentos por volumen · origen · IVA.

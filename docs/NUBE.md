@@ -2,6 +2,21 @@
 
 Sin esto, cada navegador guarda **su propia copia**: dos usuarios ven números distintos. Con la nube, todos leen y escriben en el mismo lugar.
 
+## Opción recomendada: Google Sheets (un Excel en tu Drive)
+
+No usa ningún servicio de pago ni toca otros sistemas. Los datos quedan en una hoja de cálculo tuya.
+
+1. Crea una hoja de cálculo nueva en Google Drive (ej. "ALR datos").
+2. **Extensiones → Apps Script**. Borra lo que haya y pega el contenido de [`apps-script/Code.gs`](apps-script/Code.gs) (también está en **Configuración → Nube** dentro del sistema).
+3. **Configuración del proyecto (engrane) → Propiedades de la secuencia de comandos → Agregar propiedad**: nombre `CLAVE`, valor una contraseña que tú elijas.
+4. **Implementar → Nueva implementación → Aplicación web**. Ejecutar como: *Yo*. Quién tiene acceso: *Cualquier persona*. Autoriza permisos y copia la URL que termina en `/exec`.
+5. En el sistema (PIN de LANCER) → **Configuración → Nube**, elige *Google Sheets*, pega la URL y la clave, y presiona **Probar y conectar**.
+6. Copia el **enlace para unir equipos** y ábrelo en los otros teléfonos/computadoras.
+
+Límites: latencia de 1–3 s, actualiza cada ~10 s, cuota diaria de Google, seguridad de demo (quien tenga el enlace tiene acceso).
+
+## Opción avanzada: Supabase
+
 1. Crea un proyecto gratis en https://supabase.com.
 2. Abre **SQL Editor**, pega este texto y presiona **Run**:
 

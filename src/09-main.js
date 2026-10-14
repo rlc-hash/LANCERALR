@@ -230,6 +230,7 @@ const INP = {
     setPath(row,f,val); saveCfg(); }
 };
 const CH = {
+  nubetipo(v){ NUBE.tipo=v; nubeSave(); render(); },
   fEstado(v){ S.fEstado=v; render(); }, fDest(v){ S.fDest=v; render(); },
   svia(v){ S.scan.via=v; refreshScan(); }, sord(v){ S.scan.ord=v; refreshScan(); },
   repdays(v){ S.repDays=v; render(); },
@@ -283,7 +284,7 @@ function takeScanHash(){
   const h=(location.hash||"").slice(1); let m;
   if(m=h.match(/^g\.([A-Za-z0-9-]+)$/)){ S.pendingGuia=m[1]; S.view="sistema"; S.mod="oper"; try{ history.replaceState(null,"","#sistema"); }catch(e){} return true; }
   if(m=h.match(/^t\.([A-Za-z0-9-]+)$/)){ S.view="rastreo"; S.track=m[1]; S.done=null; return true; }
-  if(m=h.match(/^nube\.([A-Za-z0-9_-]+)$/)){ try{ const c=JSON.parse(unb64u(m[1])); Object.assign(NUBE,{url:c.u,key:c.k,on:true,lastS:0,estado:"off"}); nubeSave(); S.joinCloud=true; }catch(e){} try{ history.replaceState(null,"","#sistema"); }catch(e){} S.view="sistema"; return true; }
+  if(m=h.match(/^nube\.([A-Za-z0-9_-]+)$/)){ try{ const c=JSON.parse(unb64u(m[1])); Object.assign(NUBE,{tipo:c.t||"sheets",url:c.u,key:c.k,on:true,lastS:0,estado:"off"}); nubeSave(); S.joinCloud=true; }catch(e){} try{ history.replaceState(null,"","#sistema"); }catch(e){} S.view="sistema"; return true; }
   if(!h.startsWith("s.")) return false;
   S.pendingScan="#"+h; S.view="sistema"; S.mod="scan"; try{ history.replaceState(null,"","#escaner"); }catch(e){} return true;
 }
