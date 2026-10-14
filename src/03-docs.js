@@ -13,6 +13,7 @@ function cargaTabla(o, precio){
     <table style="margin:10px 0 0 auto;width:300px;border-collapse:collapse"><tr><td>Flete</td><td class="r">${money(t.sub)}</td></tr>
     ${t.discPct?`<tr><td>Descuento por volumen ${t.discPct}%</td><td class="r">−${money(t.disc)}</td></tr>`:""}
     ${t.minApplied?`<tr><td>Mínimo por embarque</td><td class="r">${money(CFG.minimo)}</td></tr>`:""}
+    ${t.seguro>0?`<tr><td>Seguro ${CFG.seguroPct}% s/ ${money(t.seguroValor)}</td><td class="r">${money(t.seguro)}</td></tr>`:""}
     <tr><td>Subtotal</td><td class="r">${money(t.subtotal)}</td></tr><tr><td>IVA ${CFG.iva}%</td><td class="r">${money(t.iva)}</td></tr><tr><td><b>Total</b></td><td class="r"><b>${money(t.total)}</b></td></tr></table>
     ${t.est?`<div style="font-size:11px;margin-top:4px">Incluye medida especial: precio estimado, sujeto a validación de ALR.</div>`:""}` : "";
   return `<table style="width:100%;border-collapse:collapse"><thead><tr><th>Cant.</th><th>Descripción</th><th>Medidas (cm)</th><th>kg c/u</th><th>m³</th>${pr}</tr></thead><tbody>
@@ -23,12 +24,24 @@ function partes(o){
   return `<div class="two"><div><b>REMITENTE</b><br>${esc(o.sol.empresa||o.sol.nombre)}<br>${esc(o.sol.nombre)} · ${esc(o.sol.tel)}<br>${esc(o.sol.correo)}</div>
     <div><b>DESTINATARIO</b><br>${esc(o.dst.nombre)}<br>${esc(o.dst.dir)}<br>${esc(o.dst.tel)}</div></div>`;
 }
+function confBloque(o){
+  const c=o.conf||{}, r=c.recepcion, p=o.pod; let h="";
+  if(r) h+=`<p><b>Recepción en almacén:</b> ${r.cajas} de ${r.de} cajas ${r.cajas===r.de?"✓ completas":"(faltan "+(r.de-r.cajas)+")"} · confirmó ${esc(r.nombre||r.por)} · ${fdate(r.at)}${r.nota?` · ${esc(r.nota)}`:""}</p>`;
+  if(p&&p.cajas!=null) h+=`<p><b>Entrega al cliente:</b> ${p.cajas} de ${p.de} cajas ${p.cajas===p.de?"✓ completas":"(diferencia "+(p.de-p.cajas)+")"} · recibió ${esc(p.nombre)} · ${fdate(p.at)}</p>`;
+  else if((o.entregas||[]).length) h+=`<p><b>Entregas parciales:</b> ${o.entregas.map(e=>`${e.cajas} cajas a ${esc(e.nombre)} (${fdate(e.at)})`).join("; ")}</p>`;
+  return h;
+}
+function recBloque(o){
+  if(!recVigente(o)) return "";
+  const r=o.rec;
+  return `<p style="border:1px solid #999;padding:6px 8px"><b>Recolección:</b> ${esc(fshort(fromYmd(r.fecha)))} · ${esc(recVentana(r))} · ${esc(r.dir)}<br><b>Contacto:</b> ${esc(r.contacto.nombre)} · ${esc(r.contacto.tel)}${r.pregunta?` &nbsp; <b>Preguntar por:</b> ${esc(r.pregunta)}`:""}${r.instr?`<br><b>Instrucciones:</b> ${esc(r.instr)}`:""}</p>`;
+}
 function guiaDoc(o){
   const e=eta(o.dest,o.createdAt), f=(o.firmas||{}).remitente;
   return `<div class="doc">${docHead(o.guia?"GUÍA DE EMBARQUE":"PRE-GUÍA · HOJA DE EMBARQUE", o.guia||o.folio, `${qrBase()}#g.${o.folio}`)}
     ${o.guia?"":`<p class="wm">Pre-guía: queda sujeta a confirmación de ${esc(CFG.brand.short)}. Entrega esta hoja con tus cajas; el QR abre el pedido en el almacén.</p>`}
     <p style="font-size:14px"><b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)} &nbsp; <b>Ruta:</b> ${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> (${esc(dest(o.dest).transit)})${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o,true)}
+    ${partes(o)}${recBloque(o)}${cargaTabla(o,true)}${confBloque(o)}
     <p><b>Servicios:</b> ${esc(servTxt(o))} &nbsp; <b>Cajas a etiquetar:</b> ${o.totals.piezas}</p>${o.obs?`<p><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
     <div class="sig"><div>${firmaTag(f&&f.img,"firma remitente")}Firma remitente${f?` · ${esc(f.nombre)}`:""}</div><div>Firma operador / recolección</div><div>Firma almacén</div></div></div>`;
 }
@@ -36,7 +49,7 @@ function remisionDoc(o){
   const e=eta(o.dest,o.createdAt), p=o.pod;
   return `<div class="doc">${docHead("REMISIÓN DE ENTREGA", o.rem||"(sin remisión)", `${qrBase()}#g.${o.folio}`)}
     <p style="font-size:14px"><b>Guía:</b> ${esc(o.guia||"—")} &nbsp; <b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)}${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o,true)}
+    ${partes(o)}${cargaTabla(o,true)}${confBloque(o)}
     <p>Recibí de conformidad la mercancía descrita, en buen estado y completa (${o.totals.piezas} bultos).</p>
     ${p?`<p><b>Recibió:</b> ${esc(p.nombre)} ${p.id?`· ID: ${esc(p.id)}`:""} · ${fdate(p.at)}${p.notas?` · ${esc(p.notas)}`:""}</p>`:""}
     <div class="sig"><div>${firmaTag(p&&p.firma,"firma de quien recibe")}Nombre y firma de quien recibe${p?` · ${esc(p.nombre)}`:""}</div><div>${p?fdate(p.at):""}<br>Fecha y hora</div><div>Operador ${esc(CFG.brand.short)}</div></div>
@@ -60,7 +73,7 @@ function factDoc(f){
     <div><b>RECEPTOR</b><br>${esc(c.razon)}<br>RFC ${esc(c.rfc||"(pendiente)")} · Régimen ${esc(c.regimen)} · CP ${esc(c.cp||"—")}<br>Uso CFDI ${esc(f.uso)}</div></div>
     <p><b>Fecha:</b> ${fday(f.fecha)} &nbsp; <b>Método:</b> ${esc(f.metodo)} &nbsp; <b>Forma:</b> ${esc(f.forma)} &nbsp; <b>Moneda:</b> MXN &nbsp; <b>UUID:</b> ${esc(f.uuid||"— sin timbrar —")}</p>
     <table style="width:100%;border-collapse:collapse"><thead><tr><th>Clave SAT</th><th>Descripción</th><th>Unidad</th><th>Cant.</th><th>Importe</th></tr></thead><tbody>
-    ${f.conceptos.map(x=>`<tr><td>78101800</td><td>${esc(x.desc)}</td><td>E48</td><td class="c">1</td><td class="r">${money(x.importe)}</td></tr>`).join("")}</tbody></table>
+    ${f.conceptos.map(x=>`<tr><td>${esc(x.clave||"78101800")}</td><td>${esc(x.desc)}</td><td>E48</td><td class="c">1</td><td class="r">${money(x.importe)}</td></tr>`).join("")}</tbody></table>
     <table style="margin:10px 0 0 auto;width:260px;border-collapse:collapse"><tr><td>Subtotal</td><td class="r">${money(f.subtotal)}</td></tr><tr><td>IVA ${CFG.iva}%</td><td class="r">${money(f.iva)}</td></tr>${f.ret?`<tr><td>Retención IVA 4%</td><td class="r">−${money(f.ret)}</td></tr>`:""}<tr><td><b>Total</b></td><td class="r"><b>${money(f.total)}</b></td></tr></table>
     <p style="font-size:11px">Estado: ${esc(FAC_ST[est]||est)} · Complemento Carta Porte: se agrega cuando el traslado utiliza vía federal (se arma con los datos del pedido y la guía).</p></div>`;
 }

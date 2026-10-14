@@ -3,7 +3,7 @@ function render(){
   applyBrand(); document.body.dataset.view=S.view;
   const v = {cotizar:viewCotizar, rastreo:viewRastreo, sistema:viewSistema, etiquetas:viewEtiquetas}[S.view] || viewCotizar;
   $("#app").innerHTML = v();
-  if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); }
+  if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); renderRec(); renderSeg(); }
   renderOverlay(); attachCam();
   $$("table.rt").forEach(t=>{ const hs=[...t.querySelectorAll("thead th")].map(h=>h.textContent.trim()); t.querySelectorAll("tbody tr").forEach(tr=>[...tr.children].forEach((td,i)=>{ if(hs[i]) td.setAttribute("data-label",hs[i]); })); });
   if(S.view==="sistema" && S.mod==="scan" && ROLE){ const i=$("#scan-in"); if(i && !S.noFocus) i.focus(); }
@@ -46,11 +46,20 @@ const ACT = {
   /* operación sencilla por pedido */
   accion(arg){ const [f,k]=arg.split("|"); openAccion(f,k); },
   confirmord2(f){ const o=ordOf(f); confirmOrder(o); closeModal(); render(); toast(`Confirmado · guía ${o.guia}`); },
-  kstep(d){ const i=$("#ac-k"); if(!i) return; const max=+i.dataset.max||0; i.value=Math.max(0,Math.min(max,(parseInt(i.value,10)||0)+(+d))); },
-  kall(m){ const i=$("#ac-k"); if(i) i.value=m; },
+  kstep(d){ const i=$("#ac-k"); if(!i) return; const max=+i.dataset.max||0; i.value=Math.max(0,Math.min(max,(parseInt(i.value,10)||0)+(+d))); ackUpd(); },
+  kall(m){ const i=$("#ac-k"); if(i) i.value=m; ackUpd(); },
+  corregir(f){ openCorregir(f); },
+  corrapply(f){ const o=ordOf(f), motivo=($("#cj-m")||{}).value.trim(), rows=[1,2,4].map(i=>({i,cur:+$("#cj-"+i).dataset.cur,v:parseInt($("#cj-"+i).value,10)}));
+    if(rows.some(r=>isNaN(r.v)||r.v<0||r.v>o.sc.length)){ toast(`Los números deben estar entre 0 y ${o.sc.length}`,"bad"); return; }
+    const ch=rows.filter(r=>r.v!==r.cur); if(!ch.length){ toast("No cambiaste ningún número"); return; } if(!motivo){ toast("Escribe el motivo de la corrección","bad"); return; }
+    const dec=ch.filter(r=>r.v<r.cur).sort((a,b)=>b.i-a.i), inc=ch.filter(r=>r.v>r.cur).sort((a,b)=>a.i-b.i);
+    for(const r of [...dec,...inc]){ const res=ajustarEtapa(o,r.i,r.v,motivo); if(!res.ok){ toast(res.msg,"bad"); render(); return; } }
+    closeModal(); render(); toast("Conteo corregido y registrado"); },
+  adjapply(arg){ const [f,i]=arg.split("|"), o=ordOf(f), k=parseInt(($("#adj-k")||{}).value,10); if(isNaN(k)){ toast("Escribe un número","bad"); return; }
+    const res=ajustarEtapa(o,+i,k,"ajuste manual en el escáner"); if(!res.ok){ toast(res.msg,"bad"); return; } S.scan.ord=f; refreshScan(); toast(res.m?"Conteo guardado":"Sin cambios"); },
   dorecibir(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0;
     if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
-    const m=accRecibir(o,k,($("#ac-n")||{}).value.trim()); closeModal(); render(); toast(m<max?`${m} de ${max} cajas recibidas (queda incidencia)`:`${m} cajas recibidas ✓`); },
+    const m=accRecibir(o,k,($("#ac-n")||{}).value.trim(),($("#ac-p")||{}).value.trim()); closeModal(); render(); toast(m<max?`${m} de ${max} cajas recibidas (queda incidencia)`:`${m} cajas recibidas ✓`); },
   docargar(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0, via=($("#ac-via")||{}).value;
     if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
     const v=viaOf(via), oc=viajeOcc(v), n=o.sc.length, pct=Math.max((oc.m3l+k*o.totals.m3/n)/oc.cap.m3,(oc.kgl+k*o.totals.kg/n)/oc.cap.kg);
@@ -75,9 +84,9 @@ const ACT = {
   sgclear(){ const c=$("#sg-c"); if(c){ c.getContext("2d").clearRect(0,0,c.width,c.height); sgDirty=false; } },
   sgsave(arg){ const [f,kind]=arg.split("|"), o=ordOf(f), n=($("#sg-n")||{}).value.trim();
     if(!n){ toast("Escribe el nombre","bad"); return; } const img=firmaImg(); if(!img){ toast("Falta la firma: dibújala con el dedo","bad"); return; }
-    if(kind==="entrega") accEntregar(o,{nombre:n,id:($("#sg-i")||{}).value.trim(),notas:($("#sg-o")||{}).value.trim(),firma:img});
+    let res=null; if(kind==="entrega"){ const kk=$("#sg-k"), max=+kk.dataset.max, k=parseInt(kk.value,10)||0; if(k<1||k>max){ toast(`Escribe cuántas cajas recibe (1 a ${max})`,"bad"); return; } res=accEntregar(o,{nombre:n,id:($("#sg-i")||{}).value.trim(),notas:($("#sg-o")||{}).value.trim(),firma:img,cajas:k}); }
     else { o.firmas=o.firmas||{}; o.firmas.remitente={nombre:n,img,at:Date.now()}; logEv("Operación","Firma del remitente",`${o.folio} · ${n}`); saveDB(); }
-    closeModal(); render(); toast(kind==="entrega"?"Entrega guardada con firma":"Firma guardada"); },
+    closeModal(); render(); toast(kind==="entrega"?(res&&res.parcial?`Entrega parcial: ${res.total} de ${o.sc.length} cajas`:"Entrega confirmada con firma"):"Firma guardada"); },
   newpractice(){ const o=crearPractica(); S.mod="practica"; render(); toast(`Pedido de práctica ${o.folio} creado`); },
   delpractice(){ if(!ask("¿Borrar los pedidos de práctica?")) return; const fs=DB.ord.filter(o=>o.practice).map(o=>o.folio);
     DB.ord=DB.ord.filter(o=>!o.practice); DB.via.forEach(v=>{ v.ords=v.ords.filter(x=>!fs.includes(x)); }); DB.fac=DB.fac.filter(f=>!f.ords.every(x=>fs.includes(x))); saveDB(); render(); toast("Prácticas borradas"); },
@@ -88,6 +97,39 @@ const ACT = {
   qgo(){ const v=qvalid(); if(v.ok){ ACT.qsend(); return; } toast(v.msg,"bad");
     const order=[["f-sn",Q.sol.nombre.trim()],["f-sc",/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())],["f-st",Q.sol.tel.replace(/\D/g,"").length>=8],["f-dn",Q.dst.nombre.trim()],["f-dd",Q.dst.dir.trim()],["f-dt",Q.dst.tel.replace(/\D/g,"").length>=8]];
     const bad=order.find(([id,ok])=>!ok); if(bad){ const e=document.getElementById(bad[0]); if(e){ e.scrollIntoView({block:"center",behavior:"smooth"}); e.focus(); } } },
+  /* recolección y seguro (cliente) */
+  qdia(f){ Q.rec.fecha=f; renderRec(); renderSummary(); },
+  recp(arg){ const [d,h]=arg.split("|"); Q.rec.desde=d; Q.rec.hasta=h; renderRec(); renderSummary(); },
+  repeat(f){ repetirPedido(f); },
+  repsel(){ const f=(($("#rep-f")||{}).value||"").trim().toUpperCase()||(($("#rep-s")||{}).value||""); if(!f){ toast("Elige un pedido o escribe un folio","bad"); return; } repetirPedido(f); },
+  /* recolecciones (interno) */
+  calsel(f){ S.recDia=f; render(); },
+  calmes(d){ const r=S.recRef||{y:new Date().getFullYear(),m:new Date().getMonth()}, x=new Date(r.y,r.m+(+d),1); S.recRef={y:x.getFullYear(),m:x.getMonth()}; render(); },
+  calblock(f){ DB.cal.bloq[f]=(($("#rb-m")||{}).value||"").trim()||"Bloqueado"; logEv("Recolecciones","Día bloqueado",`${f} · ${DB.cal.bloq[f]}`); saveDB(); render(); toast("Día bloqueado: ya no recibe solicitudes"); },
+  calopen(f){ delete DB.cal.bloq[f]; logEv("Recolecciones","Día abierto",f); saveDB(); render(); toast("Día abierto"); },
+  recver(f){ const o=ordOf(f); if(!o||!recVigente(o)) return; const d=fromYmd(o.rec.fecha); S.recRef={y:d.getFullYear(),m:d.getMonth()}; S.recDia=o.rec.fecha; S.mod="reco"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
+  recconf(f){ openRecConfirm(f); },
+  recconf2(f){ const o=ordOf(f), r=o.rec; r.estado="programada"; r.unidad=($("#rc-u")||{}).value.trim(); r.nota=($("#rc-n")||{}).value.trim(); r.confirmadaAt=Date.now();
+    o.history.push({k:o.status,at:Date.now(),note:`Recolección confirmada: ${fshort(fromYmd(r.fecha))} ${recVentana(r)}${r.unidad?` · ${r.unidad}`:""}`,by:ROLES[ROLE].t});
+    logEv("Recolecciones","Confirmada",`${o.folio} · ${r.fecha} ${recVentana(r)}`); saveDB(); closeModal(); render(); toast("Recolección confirmada"); },
+  recdone(f){ const o=ordOf(f), r=o.rec; if(stIdx(o)<1){ toast("Primero confirma el pedido para generar la guía","bad"); return; }
+    r.estado="recolectada"; r.hechaAt=Date.now(); bump(o,"recolectado",`Recolectado en ${r.dir}${r.unidad?` · ${r.unidad}`:""}`);
+    logEv("Recolecciones","Recolectada",o.folio); saveDB(); render(); toast("Recolección registrada"); },
+  recfail(f){ const o=ordOf(f), r=o.rec; r.estado="no_realizada"; r.nota="No se pudo recolectar; reprogramar con el cliente";
+    o.history.push({k:o.status,at:Date.now(),note:"Recolección no realizada; se reprogramará",by:ROLES[ROLE].t}); logEv("Recolecciones","No realizada",o.folio); saveDB(); render(); toast("Marcada como no realizada"); },
+  recre(f){ openRecResched(f); },
+  rsdia(f){ S.rs.fecha=f; openRecResched(S.rs.folio,true); },
+  rsp(arg){ const [d,h]=arg.split("|"); S.rs.desde=d; S.rs.hasta=h; openRecResched(S.rs.folio,true); },
+  recre2(f){ const o=ordOf(f), r=o.rec, s=S.rs;
+    if(!s.fecha){ toast("Elige el nuevo día","bad"); return; } if(hh(s.hasta)-hh(s.desde)<CFG.recoleccion.minHoras){ toast(`La ventana debe ser de al menos ${CFG.recoleccion.minHoras} horas`,"bad"); return; }
+    r.fecha=s.fecha; r.desde=s.desde; r.hasta=s.hasta; if(r.estado==="no_realizada") r.estado="solicitada";
+    o.history.push({k:o.status,at:Date.now(),note:`Recolección reprogramada: ${fshort(fromYmd(r.fecha))} ${recVentana(r)}`,by:ROLES[ROLE].t}); logEv("Recolecciones","Reprogramada",`${o.folio} → ${r.fecha}`); saveDB(); closeModal(); S.recDia=r.fecha; render(); toast("Recolección reprogramada"); },
+  /* seguro (interno) */
+  segedit(f){ S.segTmp=null; openSeguroEdit(f); },
+  seguro2(f){ const o=ordOf(f), v=parseFloat((($("#se-v")||{}).value||"").replace(/[^\d.]/g,""))||0;
+    o.seguro = v>0 ? {on:true,valor:v,file:S.segTmp||(o.seguro&&o.seguro.file)||null} : {on:false,valor:0};
+    o.totals=calc(o.dest,o.items,o.seguro); S.segTmp=null; logEv("Pedidos","Seguro actualizado",`${o.folio} · ${v>0?money(o.totals.seguro):"sin seguro"}`); saveDB(); closeModal(); render(); toast(v>0?`Seguro: ${money(o.totals.seguro)}`:"Seguro quitado"); },
+  segdl(f){ const o=ordOf(f), fl=o&&o.seguro&&o.seguro.file; if(!fl) return; download(fl.name, SANDBOX?`(Archivo adjunto: ${fl.name}, ${num(fl.size/1024,0)} KB. La descarga solo funciona abriendo el sistema en su propia página web.)`:dataUrlBlob(fl.data), fl.type); },
   /* cotizador */
   qadd(){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); },
   pdel(a,el){ const i=+el.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } },
@@ -158,16 +200,19 @@ const ACT = {
 const INP = {
   qdest(v){ Q.dest=v; renderPieces(); renderSummary(); renderOcurre(); },
   qf(v,el){ setPath(Q, el.dataset.arg, v); renderSummary(); },
+  rec(v,el){ const k=el.dataset.arg; if(k==="dir") Q.rec.dir=v; else if(k==="cn") Q.rec.contacto.nombre=v; else if(k==="ct") Q.rec.contacto.tel=v; else if(k==="pr") Q.rec.pregunta=v; else if(k==="instr") Q.rec.instr=v; renderSummary(); },
+  segv(v,el){ el.value=el.value.replace(/[^\d.]/g,""); Q.seguro.valor=el.value; segRes(); renderSummary(); },
   ptipo(v,el){ const it=Q.items[+el.closest(".piece").dataset.i];
     if(v==="custom") Object.assign(it,{custom:true,cajaId:null,l:"",a:"",h:"",kg:""}); else { it.custom=false; it.cajaId=v; delete it.l; delete it.a; delete it.h; delete it.kg; }
     renderPieces(); renderSummary(); },
   pfield(v,el){ const pc=el.closest(".piece"), it=Q.items[+pc.dataset.i], k=el.dataset.arg;
     if(k==="qty"){ el.value=el.value.replace(/\D/g,"").replace(/^0+/,""); it.qty=parseInt(el.value,10)||0; } else it[k]=Math.max(0,+v||0);
     pc.querySelector(".meta").innerHTML=metaHTML(it); renderSummary(); },
+  ack(v,el){ el.value=el.value.replace(/\D/g,""); const max=+el.dataset.max; if(+el.value>max) el.value=max; ackUpd(); },
   fq(v){ S.fq=v; keepFocus(); },
   fcliq(v){ S.fCliQ=v; keepFocus(); },
   logq(v){ S.logQ=v; keepFocus(); },
-  cfg(v,el){ const nu=el.dataset.num; setPath(CFG, el.dataset.arg, nu?(+v||0):v); saveCfg(); if(el.dataset.arg.startsWith("brand")) applyBrand(); },
+  cfg(v,el){ const nu=el.dataset.num; setPath(CFG, el.dataset.arg, nu?(+v||0):v); saveCfg(); if(el.dataset.arg.startsWith("brand")) applyBrand(); else DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items,o.seguro); }); },
   cfgarr(v,el){ const [arr,i,f]=el.dataset.arg.split("|"); const row=getPath(CFG,arr)[+i];
     let val=v; if(el.dataset.num) val = (v===""&&el.dataset.nullable) ? null : (+v||0);
     setPath(row,f,val); saveCfg(); }
@@ -176,7 +221,14 @@ const CH = {
   fEstado(v){ S.fEstado=v; render(); }, fDest(v){ S.fDest=v; render(); },
   svia(v){ S.scan.via=v; refreshScan(); }, sord(v){ S.scan.ord=v; refreshScan(); },
   repdays(v){ S.repDays=v; render(); },
-  qserv(v,el){ Q.serv[el.dataset.arg]=el.checked; },
+  qserv(v,el){ Q.serv[el.dataset.arg]=el.checked; if(el.dataset.arg==="recoleccion") renderRec(); if(el.dataset.arg==="seguro") renderSeg(); renderSummary(); },
+  recd(v){ ajustaVentana(Q.rec,"desde",v); renderRec(); renderSummary(); },
+  rech(v){ ajustaVentana(Q.rec,"hasta",v); renderRec(); renderSummary(); },
+  rsd(v){ ajustaVentana(S.rs,"desde",v); openRecResched(S.rs.folio,true); },
+  rsh(v){ ajustaVentana(S.rs,"hasta",v); openRecResched(S.rs.folio,true); },
+  segfile(v,el){ leerArchivo(el.files[0], f=>{ Q.seguro.file=f; renderSeg(); toast("Factura de la mercancía adjunta"); }); },
+  segfile2(v,el){ leerArchivo(el.files[0], f=>{ S.segTmp=f; toast("Factura adjunta; guarda el seguro para aplicarla"); }); },
+  cfgbool(v,el){ setPath(CFG, el.dataset.arg, el.checked); saveCfg(); DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items,o.seguro); }); },
   qnotif(v,el){ Q.notif[el.dataset.arg]=el.checked; },
   cfgocurre(v,el){ CFG.destinos[+el.dataset.arg].ocurre=el.checked; saveCfg(); },
   descon(v,el){ CFG.desc.on=el.checked; saveCfg(); },

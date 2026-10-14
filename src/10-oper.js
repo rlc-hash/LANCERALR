@@ -37,11 +37,12 @@ function siguientePaso(o){
 }
 function moverCajas(o, desde, hasta, k){ let m=0; for(let i=1;i<=o.sc.length&&m<k;i++) if(boxStage(o,i)===desde){ setBox(o,i,hasta); m++; } return m; }
 function addInc(o,tipo,detalle,extra){ (o.inc=o.inc||[]).push({tipo,detalle,extra:extra||0,at:Date.now(),por:ROLE?ROLES[ROLE].t:"Sistema"}); }
-function accRecibir(o,k,nota){
-  const pend=stageCounts(o)[0]; k=Math.min(k,pend); const m=moverCajas(o,0,1,k);
+function accRecibir(o,k,nota,nombre){
+  const pend=stageCounts(o)[0]; k=Math.min(k,pend); const m=moverCajas(o,0,1,k), n=o.sc.length;
   if(m<pend) addInc(o,"conteo",`Recepción parcial: llegaron ${m} de ${pend} cajas pendientes${nota?` · ${nota}`:""}`); else if(nota) addInc(o,"nota",nota);
-  o.history.push({k:o.status,at:Date.now(),note:`Recepción en almacén: ${m} de ${o.sc.length} cajas${nota?` · ${nota}`:""}`,by:ROLE?ROLES[ROLE].t:"Almacén"});
-  syncStatus(o); logEv("Operación","Recepción",`${o.folio} · ${m} cajas`); saveDB(); return m;
+  const rc=atLeast(o,1); o.conf=o.conf||{}; o.conf.recepcion={cajas:rc,de:n,por:ROLE?ROLES[ROLE].t:"Almacén",nombre:nombre||"",nota:nota||"",at:Date.now()};
+  o.history.push({k:o.status,at:Date.now(),note:`Almacén confirmó ${rc} de ${n} cajas${nombre?` (${nombre})`:""}${nota?` · ${nota}`:""}`,by:ROLE?ROLES[ROLE].t:"Almacén"});
+  syncStatus(o); logEv("Operación","Recepción confirmada",`${o.folio} · ${rc} de ${n} cajas`); saveDB(); return m;
 }
 function accCargar(o,k,viaId){
   const v=viaOf(viaId); if(!v) return 0; const m=moverCajas(o,1,2,k);
@@ -55,12 +56,18 @@ function accLlegar(o,k){
   logEv("Operación","Llegada a destino",`${o.folio} · ${m} cajas`); saveDB(); return m;
 }
 function accEntregar(o,d){
-  const c=stageCounts(o), sin=c[0]+c[1]+c[2];
-  for(let i=1;i<=o.sc.length;i++) setBox(o,i,5);
-  if(sin) addInc(o,"conteo",`Entrega registrada con ${sin} cajas sin registro previo de salida`);
-  o.pod={nombre:d.nombre,id:d.id||"",notas:d.notas||"",firma:d.firma||null,at:Date.now()};
-  bump(o,"entregado",`Entregado a ${d.nombre}${d.firma?" (con firma)":""}`);
-  logEv("Operación","Entrega con firma",`${o.folio} · ${d.nombre}`); saveDB();
+  const n=o.sc.length, c=stageCounts(o), disp=c[3]+c[4]; let k=Math.max(0,Math.min(d.cajas||disp,disp)), m=0;
+  for(const e of [4,3]) m+=moverCajas(o,e,5,k-m);
+  (o.entregas=o.entregas||[]).push({nombre:d.nombre,id:d.id||"",cajas:m,at:Date.now(),firma:d.firma||null});
+  const total=atLeast(o,5), por=ROLE?ROLES[ROLE].t:"Operador";
+  if(total<n){
+    addInc(o,"conteo",`Entrega parcial: ${d.nombre} recibió ${m} cajas; en total ${total} de ${n}, faltan ${n-total}`);
+    o.history.push({k:o.status,at:Date.now(),note:`Entrega parcial: ${d.nombre} confirmó ${m} cajas (${total} de ${n})`,by:por});
+    logEv("Operación","Entrega parcial",`${o.folio} · ${total} de ${n}`); saveDB(); return {parcial:true,m,total};
+  }
+  o.pod={nombre:d.nombre,id:d.id||"",notas:d.notas||"",firma:d.firma||null,cajas:n,de:n,at:Date.now()};
+  bump(o,"entregado",`Entregado a ${d.nombre}: confirmó ${n} de ${n} cajas${d.firma?" (con firma)":""}`);
+  logEv("Operación","Entrega con firma",`${o.folio} · ${d.nombre} · ${n} cajas`); saveDB(); return {parcial:false,m,total:n};
 }
 
 /* ---- hoja de acción ---- */
@@ -68,7 +75,7 @@ function declaradoHTML(o){
   return `<div class="note info sm" style="margin:10px 0"><b>Lo que declaró el cliente</b>${o.items.map(it=>`<div>${it.qty} × ${esc(itemName(it))} — ${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg c/u</div>`).join("")}</div>`;
 }
 function stepperHTML(max,val){
-  return `<label for="ac-k">¿Cuántas cajas?</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" data-act="kstep" data-arg="-1" aria-label="Menos">−</button><input id="ac-k" type="text" inputmode="numeric" autocomplete="off" value="${val}" data-max="${max}" style="text-align:center;font-size:26px;font-weight:800;max-width:130px"><button class="btn sec" data-act="kstep" data-arg="1" aria-label="Más">+</button><button class="btn sec sm" data-act="kall" data-arg="${max}">Todas (${max})</button></div>`;
+  return `<label for="ac-k">¿Cuántas cajas?</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" data-act="kstep" data-arg="-1" aria-label="Menos">−</button><input id="ac-k" type="text" inputmode="numeric" autocomplete="off" value="${val}" data-max="${max}" data-in="ack" style="text-align:center;font-size:26px;font-weight:800;max-width:130px"><button class="btn sec" data-act="kstep" data-arg="1" aria-label="Más">+</button><button class="btn sec sm" data-act="kall" data-arg="${max}">Todas (${max})</button></div>`;
 }
 function openAccion(folio, kind){
   const o=ordOf(folio); if(!o) return;
@@ -86,7 +93,8 @@ function openAccion(folio, kind){
   if(kind==="recibir"){
     const max=c[0];
     openModal({title:"Recibir cajas en almacén", key:"acc", wide:true, html:`${hd}${declaradoHTML(o)}${stepperHTML(max,max)}
-      <div style="margin-top:12px"><label for="ac-n">Nota (si faltan cajas, escribe qué pasó)</label><input id="ac-n" placeholder="Opcional"></div>
+      <div id="ac-sum" class="note sm" style="margin-top:10px" data-de="${o.sc.length}" data-ya="${o.sc.length-max}"></div>
+      <div class="row2" style="margin-top:12px"><div><label for="ac-p">Quién recibe en almacén</label><input id="ac-p" placeholder="Nombre (opcional)"></div><div><label for="ac-n">Nota (si faltan cajas, qué pasó)</label><input id="ac-n" placeholder="Opcional"></div></div>
       <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Verificar medidas de una caja (opcional)</summary>
         <div class="sm mut" style="margin:8px 0">Mide una caja y compárala con lo declarado. Si excede, queda una incidencia y se estima el ajuste.</div>
         <div class="row2"><div><label for="mc-it">Tipo de caja</label><select id="mc-it">${o.items.map((it,i)=>`<option value="${i}">${esc(itemName(it))} — declarada ${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg</option>`).join("")}</select></div><div></div></div>
@@ -108,6 +116,12 @@ function openAccion(folio, kind){
   }
   if(kind==="entregar"){ openSign(o.folio,"entrega"); return; }
 }
+function ackUpd(){
+  const k=$("#ac-k"), s=$("#ac-sum"); if(!k||!s) return;
+  const v=parseInt(k.value,10)||0, de=+s.dataset.de, ya=+s.dataset.ya, tot=ya+v;
+  s.className="note sm "+(tot===de?"ok":"");
+  s.innerHTML=`Vas a confirmar que recibiste <b>${v}</b> cajas${ya?` (más ${ya} ya recibidas)`:""}: <b>${tot} de ${de}</b>${tot===de?" ✓ completas":` · faltan ${de-tot}`}.`;
+}
 function guiaPendiente(folio){
   const o=ordOf(folio); if(!o){ toast("No encontré ese pedido","bad"); return; }
   S.view="sistema"; S.mod="oper"; S.drawer=null; render(); openAccion(folio);
@@ -117,13 +131,15 @@ function guiaPendiente(folio){
 let sgDrawing=false, sgDirty=false;
 function openSign(folio, kind){
   const o=ordOf(folio); if(!o) return; const ent=kind==="entrega";
+  const cc=stageCounts(o), disp=cc[3]+cc[4];
+  if(ent && disp===0){ toast("Todavía no hay cajas en destino. Registra primero la llegada.","bad"); return; }
   sgDirty=false;
   openModal({title:ent?"Entrega y firma":"Firma del remitente", key:"sign", wide:true,
     html:`<div class="sm mut" style="margin-bottom:8px"><b>${esc(o.folio)}</b> · ${esc(o.dst.nombre)} · ${o.totals.piezas} cajas</div>
       <div class="row2"><div><label for="sg-n">${ent?"Quién recibe":"Nombre de quien entrega"}</label><input id="sg-n" value="${esc(ent?"":o.sol.nombre)}" placeholder="Nombre completo"></div>${ent?`<div><label for="sg-i">Identificación (opcional)</label><input id="sg-i" placeholder="INE / folio"></div>`:`<div></div>`}</div>
       <div style="margin-top:10px"><label>Firma (dibuja con el dedo)</label><canvas id="sg-c" width="700" height="260" class="sgpad"></canvas>
       <div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="sgclear">Borrar firma</button></div></div>
-      ${ent?`<div style="margin-top:10px"><label for="sg-o">Notas (opcional)</label><input id="sg-o" placeholder="Ej. caja con golpe, recibió completo…"></div>`:""}`,
+      ${ent?`<div style="margin-top:10px"><label for="sg-k">Cajas que recibe el cliente</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input id="sg-k" inputmode="numeric" autocomplete="off" value="${disp}" data-max="${disp}" style="max-width:130px;font-size:24px;font-weight:800;text-align:center"><span class="sm mut">de ${o.sc.length} en total · ${disp} disponibles para entregar</span></div><div class="note sm" style="margin-top:8px">Al firmar, quien recibe confirma que contó ese número de cajas.</div></div><div style="margin-top:10px"><label for="sg-o">Notas (opcional)</label><input id="sg-o" placeholder="Ej. caja con golpe, recibió completo…"></div>`:""}`,
     actions:`<button class="btn ok" data-act="sgsave" data-arg="${esc(o.folio)}|${kind}">${ent?"Guardar entrega":"Guardar firma"}</button>`});
   initSignPad();
 }
@@ -174,13 +190,14 @@ function modOper(){
     ${S.scan.cam?`<div style="margin-top:12px"><video id="cam" class="cam" playsinline muted autoplay></video></div>`:""}
     <form data-form="guia" style="display:flex;gap:8px;margin-top:12px"><label for="gi" style="display:none">Folio</label><input id="gi" placeholder="Escribe el folio, ej. ALR-2026-0003" autocomplete="off" autocapitalize="characters"><button class="btn sec">Abrir</button></form></div>
   ${por&&allowed("pedidos")?`<div class="note sm" style="margin-top:12px">Hay <b>${por}</b> pedido(s) nuevos por confirmar en <a href="#" data-act="mod" data-arg="pedidos" style="color:var(--c1);font-weight:700">Pedidos</a>.</div>`:""}
+  ${recHoyHTML()}
   <div class="opchips">${[["todos","Todos",items.length],...kinds.map(([k,t])=>[k,t,cnt(k)])].map(([k,t,n])=>`<button class="${F===k?"on":""}" data-act="operf" data-arg="${k}">${t}<b>${n}</b></button>`).join("")}</div>
   <div class="oplist">${lista.map(({o,p})=>{ const e=eta(o.dest,o.createdAt);
     return `<div class="opc"><div class="opc-h"><b>${esc(o.folio)}</b>${o.practice?` <span class="pill dark">práctica</span>`:""}${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}<span class="mut sm" style="margin-left:auto">${esc(dest(o.dest).name)}</span></div>
       <div class="sm">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)}</div>
       <div class="xs mut" style="margin:4px 0 8px">${o.totals.piezas} cajas · ${num(o.totals.m3,1)} m³ · ${num(o.totals.kg,0)} kg${e?` · llega ${esc(etaText(e))}`:""}</div>
       ${boxProgress(o,false)}
-      <div class="opc-b"><button class="btn big" data-act="accion" data-arg="${esc(o.folio)}|${p.k}">${esc(p.t)}</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío</button></div></div>`; }).join("")||`<div class="card mut c" style="padding:28px">No hay pedidos en esta lista.</div>`}</div>
+      <div class="opc-b"><button class="btn big" data-act="accion" data-arg="${esc(o.folio)}|${p.k}">${esc(p.t)}</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío</button><button class="btn ghost sm" data-act="corregir" data-arg="${esc(o.folio)}">Corregir conteo</button></div></div>`; }).join("")||`<div class="card mut c" style="padding:28px">No hay pedidos en esta lista.</div>`}</div>
   <h3 style="margin:24px 0 10px">Unidades de hoy</h3>${unidadesHoyHTML()}`;
 }
 
@@ -191,7 +208,7 @@ function crearPractica(){
   const mk=id=>{ const k=CFG.cajas.find(x=>x.id===id)||CFG.cajas[0]; return {cajaId:k.id,l:k.l,a:k.a,h:k.h,kg:k.kg}; };
   const d=CFG.destinos.find(x=>!x.ocurre)||CFG.destinos[0];
   const items=[{...mk(CFG.cajas[0].id),qty:8},{...mk((CFG.cajas[1]||CFG.cajas[0]).id),qty:4}];
-  const o={folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:d.id, items, sol:{nombre:c.nombre,empresa:c.razon,correo:c.correo,tel:c.tel}, dst:{nombre:"Bodega de práctica",dir:"Av. de práctica 100, "+d.name,tel:"5555555556"}, serv:{recoleccion:false,entrega:false,seguro:false}, obs:"PEDIDO DE PRÁCTICA", guia:"", cancelado:false, status:"solicitado", cli:c.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{}, practice:true, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido de práctica",by:"Sistema"}]};
+  const o={folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:d.id, items, sol:{nombre:c.nombre,empresa:c.razon,correo:c.correo,tel:c.tel}, dst:{nombre:"Bodega de práctica",dir:"Av. de práctica 100, "+d.name,tel:"5555555556"}, serv:{recoleccion:false,entrega:false,seguro:false}, obs:"PEDIDO DE PRÁCTICA", guia:"", cancelado:false, status:"solicitado", cli:c.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{}, practice:true, rec:{on:false}, seguro:{on:false,valor:0}, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido de práctica",by:"Sistema"}]};
   o.totals=calc(o.dest,items); o.sc="0".repeat(o.totals.piezas);
   DB.ord.unshift(o); logEv("Práctica","Pedido de práctica creado",o.folio); saveDB(); return o;
 }
@@ -217,4 +234,39 @@ function modPractica(){
     <div class="stack" style="margin:12px 0"><i style="width:${hechos/pasos.length*100}%;background:var(--ok)"></i></div>
     ${pasos.map((p,i)=>`<div class="pstep ${p.ok?"ok":i===sig?"now":""}"><span class="pn">${p.ok?"✓":i+1}</span><div style="flex:1;min-width:0"><b>${esc(p.t)}</b></div>${p.ok?"":(i===sig?`<button class="btn sm" data-act="${p.act[0]}" data-arg="${esc(p.act[1])}">${esc(p.b)}</button>`:"")}</div>`).join("")}
     ${sig<0?`<div class="note ok" style="margin-top:12px">¡Práctica completa! Ya recorriste todo el proceso.</div>`:""}</div>`; }).join("")||`<div class="card c" style="padding:30px"><p class="mut">Todavía no hay pedidos de práctica.</p><button class="btn" data-act="newpractice">Crear pedido de práctica</button></div>`}`;
+}
+
+/* ---- corregir conteo ---- */
+function resyncDown(o){
+  if(o.cancelado) return;
+  const c=stageCounts(o), min=Math.min(...c.map((v,i)=>v?i:9));
+  const key = min>=5?"entregado":min>=4?"almacen_destino":min>=3?"transito":min>=1?"almacen_origen":(o.rec&&o.rec.estado==="recolectada"?"recolectado":"confirmado");
+  if(stKey(key)>=1 && stKey(key)<stIdx(o)) advance(o,key,"Estatus ajustado por corrección de conteo");
+}
+function ajustarEtapa(o,i,k,motivo){
+  const n=o.sc.length, cur=atLeast(o,i); k=Math.max(0,Math.min(n,k)); if(k===cur) return {ok:true,m:0};
+  if(k>cur){
+    const need=k-cur, avail=stageCounts(o)[i-1];
+    if(need>avail) return {ok:false,msg:`Solo hay ${avail} cajas disponibles en el paso anterior`};
+    if(i===2){ const v=o.viaje&&viaOf(o.viaje); if(!v||!["abierto","cargando"].includes(v.status)) return {ok:false,msg:"Asigna primero el pedido a una unidad abierta (usa Cargar al camión)"}; }
+    moverCajas(o,i-1,i,need);
+  } else {
+    const need=cur-k, exact=stageCounts(o)[i];
+    if(need>exact) return {ok:false,msg:`${cur-exact} cajas ya avanzaron al paso siguiente; corrige ese paso primero`};
+    let m=0; for(let j=n;j>=1&&m<need;j--) if(boxStage(o,j)===i){ setBox(o,j,i-1); m++; }
+  }
+  const por=ROLE?ROLES[ROLE].t:"Sistema";
+  addInc(o,"conteo",`Conteo corregido (${STAGES[i-1].t}): de ${cur} a ${k} de ${n} cajas${motivo?` · ${motivo}`:""}`);
+  o.history.push({k:o.status,at:Date.now(),note:`Conteo corregido: ${STAGES[i-1].t} ${cur} → ${k} de ${n}${motivo?` (${motivo})`:""}`,by:por});
+  if(i===1){ o.conf=o.conf||{}; o.conf.recepcion={...(o.conf.recepcion||{}),cajas:k,de:n,por,at:Date.now(),nota:motivo||""}; }
+  resyncDown(o); syncStatus(o); logEv("Operación","Conteo corregido",`${o.folio} · ${STAGES[i-1].t}: ${cur} → ${k}`); saveDB(); return {ok:true,m:Math.abs(k-cur)};
+}
+function openCorregir(f){
+  const o=ordOf(f); if(!o) return; const n=o.sc.length, v={1:atLeast(o,1),2:atLeast(o,2),4:atLeast(o,4)};
+  const row=(i,l)=>`<div class="row2" style="align-items:end;margin-bottom:10px"><div><label for="cj-${i}">${l}</label><input id="cj-${i}" inputmode="numeric" autocomplete="off" value="${v[i]}" data-cur="${v[i]}" style="font-size:22px;font-weight:800;text-align:center"></div><div class="sm mut">de ${n} cajas (ahora ${v[i]})</div></div>`;
+  openModal({title:"Corregir conteo", key:"corr", html:`<div style="margin-bottom:8px"><b style="font-size:18px">${esc(o.folio)}</b> ${badge(o)}<div class="sm mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(dest(o.dest).name)} · ${n} cajas</div></div>
+    <div class="note info sm" style="margin-bottom:12px">Si contaron de más o de menos, corrige el número. Queda en el historial con tu motivo.</div>
+    ${row(1,"Cajas recibidas en almacén")}${row(2,"Cajas cargadas al camión")}${row(4,"Cajas llegadas a destino")}
+    <label for="cj-m">Motivo *</label><input id="cj-m" placeholder="Ej. Se contaron mal, 2 cajas dañadas, faltó una tarima">`,
+    actions:`<button class="btn" data-act="corrapply" data-arg="${esc(f)}">Guardar corrección</button>`});
 }

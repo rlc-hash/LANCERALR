@@ -20,9 +20,9 @@ function viewSistema(){
   if(!allowed(S.mod)) S.mod = ROLES[ROLE].mods[0];
   const porConf = DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
   const venc = DB.fac.filter(f=>facEstado(f)==="vencida").length;
-  const nb = {pedidos:porConf, fact:venc};
+  const nb = {pedidos:porConf, fact:venc, reco:DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.estado==="solicitada").length};
   const nav = ROLES[ROLE].mods.map(m=>`<button class="nv ${S.mod===m?"on":""}" data-act="mod" data-arg="${m}"><span>${MODS[m].ic}</span>${MODS[m].t}${nb[m]?`<span class="n">${nb[m]}</span>`:""}</button>`).join("");
-  const body = {dash:modDash,oper:modOper,practica:modPractica,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
+  const body = {dash:modDash,reco:modReco,oper:modOper,practica:modPractica,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
   return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}<button class="nv" data-act="logout"><span>⎋</span>Salir</button></aside><div class="main">${body}</div></div>`;
 }
 /* ---- resumen de envío (se reutiliza en facturas, guías, remisiones y escáner) ---- */
@@ -60,6 +60,7 @@ function modDash(){
   DB.fac.filter(f=>facEstado(f)==="vencida").forEach(f=>alerts.push({k:"bad",t:`Factura ${f.id} vencida`,s:`${cliOf(f.cli).razon} · saldo ${money(facSaldo(f))}`,a:"modgo",arg:"fact"}));
   DB.via.filter(v=>v.status==="cargando").forEach(v=>alerts.push({k:"warn",t:`${v.id} cargando (${v.unidad})`,s:`Faltan ${viajeFaltantes(v)} cajas por subir · destino ${dest(v.dest).name}`,a:"modgo",arg:"viajes"}));
   act.filter(o=>(o.inc||[]).some(x=>x.tipo==="medidas")).forEach(o=>alerts.push({k:"bad",t:`${o.folio} con medidas fuera de lo declarado`,s:"Revisar ajuste de tarifa",a:"open",arg:o.folio}));
+  { const rp=DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.estado==="solicitada"); if(rp.length) alerts.push({k:"warn",t:`${rp.length} recolección(es) por confirmar`,s:`La más próxima: ${fshort(fromYmd(rp.map(o=>o.rec.fecha).sort()[0]))}`,a:"modgo",arg:"reco"}); }
   act.filter(o=>o.totals.est&&o.status==="solicitado").forEach(o=>alerts.push({k:"warn",t:`${o.folio} con medida especial`,s:"Validar precio antes de confirmar",a:"open",arg:o.folio}));
   DB.cli.filter(c=>c.pendiente).forEach(c=>alerts.push({k:"warn",t:`Cliente ${c.razon} sin datos fiscales`,s:"Completar RFC y régimen para facturar",a:"modgo",arg:"clientes"}));
   const porEtapa = CFG.steps.map(s=>({t:s.t,n:act.filter(o=>o.status===s.k).length}));
@@ -133,7 +134,7 @@ function drawerHTML(o){
   return `<div class="drawer-bg" data-act="drawerbg"><div class="drawer">
     <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn sec sm" data-act="closedrawer">← Volver</button>
-      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><a class="btn sec sm" href="${esc(waLink(o.sol.tel,shareText(o)))}" target="_blank" rel="noopener">Enviar WhatsApp</a><a class="btn sec sm" href="${esc(mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,shareText(o)))}" target="_blank" rel="noopener">Enviar correo</a><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar</button></div>
+      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><button class="btn sec sm" data-act="repeat" data-arg="${esc(o.folio)}">Repetir pedido</button><a class="btn sec sm" href="${esc(waLink(o.sol.tel,shareText(o)))}" target="_blank" rel="noopener">Enviar WhatsApp</a><a class="btn sec sm" href="${esc(mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,shareText(o)))}" target="_blank" rel="noopener">Enviar correo</a><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar</button></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -145,9 +146,14 @@ function drawerHTML(o){
       ${atrasado(o)?`<div class="note bad sm" style="margin-top:12px">Este pedido va con retraso respecto a la fecha estimada.</div>`:""}
     </div>
     ${o.status==="solicitado"&&!o.cancelado?`<div class="card noprint" style="border:2px solid var(--c1)"><div class="h2">Confirmar pedido</div><p class="mut sm" style="margin:0 0 12px">Al confirmar se asigna número de guía y se genera la remisión. El cliente lo ve de inmediato en su seguimiento.</p><button class="btn" data-act="confirmord" data-arg="${esc(o.folio)}">Confirmar y generar guía + remisión</button></div>`:""}
+    ${recVigente(o)?`<div class="card"><div class="h2">Recolección</div>${recCard(o)}<button class="btn sec sm noprint" data-act="recver" data-arg="${esc(o.folio)}">Ver en el calendario</button></div>`:""}
+    <div class="card"><div class="h2">Seguro de la mercancía</div>${o.seguro&&o.seguro.on?`<div class="sm">Valor declarado <b>${money(t.seguroValor)}</b> · seguro ${CFG.seguroPct}% = <b>${money(t.seguro)}</b>${o.seguro.file?`<br>Factura de la mercancía: <b>${esc(o.seguro.file.name)}</b> (${num(o.seguro.file.size/1024,0)} KB)`:`<br><span class="mut">Sin factura de mercancía adjunta.</span>`}</div><div class="chips noprint" style="margin-top:10px">${o.seguro.file?`<button class="btn sec sm" data-act="segdl" data-arg="${esc(o.folio)}">Ver / descargar factura</button>`:""}<button class="btn sec sm" data-act="segedit" data-arg="${esc(o.folio)}">Editar seguro</button></div>`:`<div class="sm mut">Este pedido no tiene seguro.</div><button class="btn sec sm noprint" style="margin-top:10px" data-act="segedit" data-arg="${esc(o.folio)}">Agregar seguro (${CFG.seguroPct}%)</button>`}</div>
     ${(o.inc||[]).length?`<div class="card" style="border:2px solid #e0a21b"><div class="h2">Incidencias <span class="pill warn">${o.inc.length}</span></div>${o.inc.map(x=>`<div class="sm" style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(x.tipo==="medidas"?"Medidas":x.tipo==="conteo"?"Conteo":"Nota")}</b> · ${esc(x.detalle)}${x.extra>0?` · ajuste estimado <b>${money(x.extra)}</b>`:""}<div class="xs mut">${fdate(x.at)} · ${esc(x.por)}</div></div>`).join("")}</div>`:""}
     <div class="card"><div class="h2">Cajas escaneadas <span class="pill ${n-c[0]===n?"ok":"warn"}">${n-c[0]} de ${n} recibidas</span></div>
       ${boxProgress(o,false)}
+      ${o.conf&&o.conf.recepcion?`<div class="sm" style="margin-top:8px">Almacén confirmó <b>${o.conf.recepcion.cajas} de ${o.conf.recepcion.de}</b> cajas${o.conf.recepcion.nombre?` · ${esc(o.conf.recepcion.nombre)}`:""} · ${fdate(o.conf.recepcion.at)}</div>`:""}
+      ${o.pod&&o.pod.cajas!=null?`<div class="sm">Cliente confirmó <b>${o.pod.cajas} de ${o.pod.de}</b> cajas · ${esc(o.pod.nombre)} · ${fdate(o.pod.at)}</div>`:""}
+      ${stIdx(o)>=1&&!o.cancelado?`<div class="chips noprint" style="margin-top:8px"><button class="btn sec sm" data-act="corregir" data-arg="${esc(o.folio)}">Corregir conteo</button></div>`:""}
       ${stIdx(o)>=1&&falt?`<div class="note sm" style="margin-top:10px"><b>Faltan por recibir en almacén:</b> cajas ${esc(falt)}</div>`:""}
       ${stIdx(o)>=1&&!falt?`<div class="note ok sm" style="margin-top:10px">Conciliación completa: las ${n} cajas fueron recibidas.</div>`:""}
       <div class="boxes">${n<=400?Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join(""):""}</div>
@@ -164,7 +170,7 @@ function drawerHTML(o){
       <div class="scroll"><table><thead><tr><th>Pieza</th><th class="r">Cant</th><th>Medidas</th><th class="r">kg c/u</th><th class="r">m³</th><th class="r">Importe</th></tr></thead>
       <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kgU,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
       <div class="row3" style="margin-top:14px">
-        ${[["Cajas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Subtotal",money(t.subtotal)],["IVA",money(t.iva)],["Total",money(t.total)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
+        ${[["Cajas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Seguro",t.seguro>0?money(t.seguro):"—"],["Subtotal",money(t.subtotal)],["IVA",money(t.iva)],["Total",money(t.total)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
       </div>
       <div class="sm mut" style="margin-top:10px">Flete ${money(t.sub)}${t.discPct?` · descuento ${t.discPct}%`:""}${t.minApplied?` → mínimo ${money(CFG.minimo)}`:""} · Servicios: ${esc(servTxt(o))}</div>
     </div>

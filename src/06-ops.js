@@ -28,7 +28,8 @@ function scanReconHTML(){
     ${boxProgress(o,false)}
     ${done===n?`<div class="note ok sm" style="margin-top:10px">Conciliación completa: entraron las ${n} cajas ✓</div>`:`<div class="note sm" style="margin-top:10px"><b>Faltan ${n-done} cajas:</b> ${esc(falt)}</div>`}
     ${n<=400?`<div class="boxes">${Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join("")}</div>`:""}
-    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`;
+    ${!auto&&stIdx(o)>=1?`<div class="card flat" style="margin-top:12px"><b class="sm">Cargar o modificar a mano: "${esc(st.t)}"</b><div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><input id="adj-k" inputmode="numeric" autocomplete="off" value="${done}" style="max-width:110px;font-weight:800;text-align:center"><span class="sm mut">de ${n} cajas</span><button class="btn sec sm" data-act="adjapply" data-arg="${esc(o.folio)}|${st.i}">Guardar conteo</button></div></div>`:""}
+    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button><button class="btn sec sm" data-act="corregir" data-arg="${esc(o.folio)}">Corregir conteo</button></div>`;
 }
 function refreshScan(){ const a=$("#scan-feed"); if(a) a.innerHTML=scanFeedHTML(); const b=$("#scan-recon"); if(b) b.innerHTML=scanReconHTML(); }
 function submitScan(code){

@@ -52,7 +52,9 @@ function createOrder(q){
   const cl = findOrCreateCliente(q.sol);
   const o = { folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:q.dest, items, sol:{...q.sol}, dst:{...q.dst}, serv:{...q.serv}, obs:q.obs.trim(),
     guia:"", cancelado:false, status:"solicitado", cli:cl.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{...(q.notif||{})}, practice:false, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
-  o.totals = calc(o.dest, items); o.sc = "0".repeat(o.totals.piezas);
+  o.seguro = q.serv.seguro ? {on:true, valor:+q.seguro.valor||0, file:q.seguro.file||null} : {on:false,valor:0};
+  o.rec = q.serv.recoleccion ? {on:true, dir:q.rec.dir.trim(), contacto:{nombre:q.rec.contacto.nombre.trim(),tel:q.rec.contacto.tel.trim()}, pregunta:q.rec.pregunta.trim(), instr:q.rec.instr.trim(), fecha:q.rec.fecha, desde:q.rec.desde, hasta:q.rec.hasta, estado:"solicitada", solicitadaAt:Date.now()} : {on:false};
+  o.totals = calc(o.dest, items, o.seguro); o.sc = "0".repeat(o.totals.piezas);
   DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} cajas · ${money(o.totals.total)}`); saveDB();
   const mis=store.get("alr_mis_v1")||[]; mis.unshift(o.folio); store.set("alr_mis_v1",mis.slice(0,20));
   return o;
@@ -136,7 +138,9 @@ function crearFactura(folios){
   const ret = cl.retIva ? subtotal*0.04 : 0;
   const n = nextSeq("fac",1001);
   const f = {id:`${CFG.empresa.serie}-${n}`, serie:CFG.empresa.serie, folio:n, fecha:Date.now(), cli:cl.id, ords:folios.slice(),
-    conceptos: ords.map(o=>({desc:`Servicio de transporte de carga ${CFG.origen} → ${dest(o.dest).name} · guía ${o.guia||"s/g"} · pedido ${o.folio} · ${o.totals.piezas} cajas, ${num(o.totals.kg)} kg, ${num(o.totals.m3,3)} m³`, importe:o.totals.subtotal})),
+    conceptos: ords.flatMap(o=>{ const c=[{desc:`Servicio de transporte de carga ${CFG.origen} → ${dest(o.dest).name} · guía ${o.guia||"s/g"} · pedido ${o.folio} · ${o.totals.piezas} cajas, ${num(o.totals.kg)} kg, ${num(o.totals.m3,3)} m³`, importe:o.totals.flete}];
+      if(o.totals.seguro>0) c.push({desc:`Seguro de mercancía ${CFG.seguroPct}% sobre valor declarado ${money(o.totals.seguroValor)} · pedido ${o.folio}`, importe:o.totals.seguro, seguro:true, clave:CFG.seguroClave});
+      return c; }),
     subtotal, iva, ret, total:subtotal+iva-ret, estado:"borrador", pagos:[], venc:Date.now()+(cl.credito||0)*DAY,
     metodo: cl.credito>0?"PPD":"PUE", forma: cl.credito>0?"99":"03", uso:cl.uso||"G03", uuid:null};
   ords.forEach(o=>o.fac.push(f.id)); DB.fac.unshift(f); logEv("Facturación","Factura creada (borrador)",`${f.id} · ${cl.razon} · ${money(f.total)}`); saveDB(); return f;
@@ -151,8 +155,8 @@ function cfdiXML(f){
   const c=cliOf(f.cli), E=CFG.empresa, a=(n,v)=>` ${n}="${xe(v)}"`, m=v=>Number(v).toFixed(2);
   const tasa=(CFG.iva/100).toFixed(6);
   const fecha = new Date(f.fecha).toISOString().slice(0,19);
-  const conc = f.conceptos.map(x=>{ const iv=x.importe*CFG.iva/100, rt=c.retIva?x.importe*0.04:0;
-    return `    <cfdi:Concepto${a("ClaveProdServ","78101800")}${a("Cantidad","1")}${a("ClaveUnidad","E48")}${a("Unidad","Unidad de servicio")}${a("Descripcion",x.desc)}${a("ValorUnitario",m(x.importe))}${a("Importe",m(x.importe))}${a("ObjetoImp","02")}>
+  const conc = f.conceptos.map(x=>{ const iv=(x.seguro&&!CFG.seguroIva)?0:x.importe*CFG.iva/100, rt=c.retIva?x.importe*0.04:0;
+    return `    <cfdi:Concepto${a("ClaveProdServ",x.clave||"78101800")}${a("Cantidad","1")}${a("ClaveUnidad","E48")}${a("Unidad","Unidad de servicio")}${a("Descripcion",x.desc)}${a("ValorUnitario",m(x.importe))}${a("Importe",m(x.importe))}${a("ObjetoImp","02")}>
       <cfdi:Impuestos>
         <cfdi:Traslados><cfdi:Traslado${a("Base",m(x.importe))}${a("Impuesto","002")}${a("TipoFactor","Tasa")}${a("TasaOCuota",tasa)}${a("Importe",m(iv))}/></cfdi:Traslados>${rt?`
         <cfdi:Retenciones><cfdi:Retencion${a("Base",m(x.importe))}${a("Impuesto","002")}${a("TipoFactor","Tasa")}${a("TasaOCuota","0.040000")}${a("Importe",m(rt))}/></cfdi:Retenciones>`:""}
@@ -184,7 +188,7 @@ Ruta: ${CFG.origen} → ${d.name} (${d.transit})${e?`\nEntrega estimada: ${etaTe
 Piezas (${t.piezas}):
 ${piezas}
 Volumen: ${num(t.m3,3)} m³ · Peso real: ${num(t.kg)} kg
-Servicios: ${serv}
+Servicios: ${serv}${t.seguro>0?`\nSeguro ${CFG.seguroPct}% sobre ${money(t.seguroValor)}: ${money(t.seguro)}`:""}${recVigente(o)?`\nRecolección: ${fshort(fromYmd(o.rec.fecha))} ${recVentana(o.rec)} · ${o.rec.dir} · ${o.rec.contacto.nombre} ${o.rec.contacto.tel}${o.rec.pregunta?` · preguntar por ${o.rec.pregunta}`:""}${o.rec.instr?` · ${o.rec.instr}`:""}`:""}
 Subtotal: ${money(t.subtotal)}${t.minApplied?" (mínimo por embarque)":""} · IVA: ${money(t.iva)} · *Total: ${money(t.total)}*${t.est?"\n⚠ Incluye medida especial: precio estimado, requiere validación.":""}
 
 Solicitante: ${o.sol.nombre} · ${o.sol.empresa||""} · ${o.sol.tel} · ${o.sol.correo}
@@ -196,7 +200,9 @@ function orderJSON(o){
     cliente:{id:c.id, razon:c.razon, rfc:c.rfc},
     ruta:{origen:CFG.origen,destino:dest(o.dest).name,transito:dest(o.dest).transit},
     piezas:t.lines.map(l=>({descripcion:itemName(l),cantidad:l.qty,largo_cm:l.l,ancho_cm:l.a,alto_cm:l.h,peso_kg_unit:l.kg,m3:+l.m3.toFixed(4),precio_unit:+l.unit.toFixed(2),importe:+l.line.toFixed(2),estimado:!!l.est})),
-    totales:{piezas:t.piezas,m3:+t.m3.toFixed(4),kg_reales:+t.kg.toFixed(2),kg_volumetricos:+t.kgVol.toFixed(2),kg_cobrables:+t.kgCob.toFixed(2),descuento_pct:t.discPct,subtotal:+t.subtotal.toFixed(2),minimo_aplicado:t.minApplied,iva:+t.iva.toFixed(2),total:+t.total.toFixed(2)},
+    seguro:{activo:!!(o.seguro&&o.seguro.on),valor_declarado:t.seguroValor,porcentaje:CFG.seguroPct,importe:+t.seguro.toFixed(2),factura_mercancia:(o.seguro&&o.seguro.file)?o.seguro.file.name:null},
+    recoleccion:recVigente(o)?{fecha:o.rec.fecha,desde:o.rec.desde,hasta:o.rec.hasta,direccion:o.rec.dir,contacto:o.rec.contacto,preguntar_por:o.rec.pregunta,instrucciones:o.rec.instr,estado:o.rec.estado,unidad:o.rec.unidad||null}:null,
+    totales:{piezas:t.piezas,flete:+t.flete.toFixed(2),seguro:+t.seguro.toFixed(2),m3:+t.m3.toFixed(4),kg_reales:+t.kg.toFixed(2),kg_volumetricos:+t.kgVol.toFixed(2),kg_cobrables:+t.kgCob.toFixed(2),descuento_pct:t.discPct,subtotal:+t.subtotal.toFixed(2),minimo_aplicado:t.minApplied,iva:+t.iva.toFixed(2),total:+t.total.toFixed(2)},
     cajas_por_etapa:stageCounts(o), servicios:o.serv, solicitante:o.sol, destinatario:o.dst, observaciones:o.obs||"",
     requiere_validacion:t.est, entrega:o.pod, historial:o.history };
 }
@@ -262,14 +268,24 @@ function seedDB(){
   fOrd(o9,"emitida",false,3);
   const fp=fOrd(o3,"emitida",false,1); fp.pagos.push({at:now,monto:20000,forma:"03",ref:"Anticipo SPEI"});
   [["trailer"],["trailer"],["torton"],["rabon"]].forEach((t,i)=>{ if(db.via[i]) db.via[i].tipo=t[0]; });
-  db.ord.forEach(o=>{ o.inc=[]; o.firmas={}; o.notif={}; o.pr={}; });
+  db.ord.forEach(o=>{ o.inc=[]; o.firmas={}; o.notif={}; o.pr={}; if(!o.rec) o.rec={on:false}; if(!o.seguro) o.seguro={on:false,valor:0}; });
+  db.cal={bloq:{}};
+  const dRec=n=>ymd(addBiz(now,n));
+  const recSeed=(o,dia,desde,hasta,estado,extra)=>{ o.rec={on:true,dir:o.sol.empresa+" — "+(db.cli.find(c=>c.id===o.cli)||{}).dir,contacto:{nombre:o.sol.nombre,tel:o.sol.tel},pregunta:"Recepción / almacén",instr:"Anunciarse en caseta y pedir al jefe de almacén.",fecha:dRec(dia),desde,hasta,estado,solicitadaAt:now-3*H,...extra}; };
+  recSeed(o1,1,"09:00","12:00","solicitada"); recSeed(o6,1,"13:00","17:00","solicitada",{instr:"Maquinaria pesada: se necesita montacargas. Entrar por la puerta 2."});
+  recSeed(o10,2,"10:00","14:00","programada",{unidad:"Camioneta 2",nota:"Llegamos entre 10:30 y 11:30"}); recSeed(o2,2,"08:00","11:00","programada",{unidad:"Camioneta 1"});
+  recSeed(o8,3,"14:00","18:00","solicitada",{pregunta:"Con Rosa Elena, almacén 2",instr:"Cargar por andén trasero."});
+  db.cal.bloq[dRec(5)]="Mantenimiento de unidades";
+  o2.seguro={on:true,valor:180000,file:null}; o2.totals=calc(o2.dest,o2.items,o2.seguro);
+  o1.seguro={on:true,valor:95000,file:null}; o1.totals=calc(o1.dest,o1.items,o1.seguro);
   db.log=[]; logEv("Sistema","Datos de ejemplo cargados","8 clientes, 10 pedidos, 4 viajes, 4 facturas");
   return db;
 }
 function loadDB(){
   DB = store.get(KEY_DB);
   if(!DB || !DB.cli || !DB.ord){ seedDB(); saveDB(); }
-  DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; });
+  if(!DB.cal) DB.cal={bloq:{}};
+  DB.ord.forEach(o=>{ if(!o.seguro) o.seguro={on:false,valor:0}; if(!o.rec) o.rec={on:false}; o.totals=calc(o.dest,o.items,o.seguro); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; });
   DB.via.forEach(v=>{ if(!v.tipo) v.tipo="torton"; });
 }
 loadDB();

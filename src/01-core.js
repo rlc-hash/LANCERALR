@@ -11,7 +11,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v7", APP_DATE = "13 oct 2026";
+const APP_VERSION = "v8", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -33,6 +33,8 @@ const DEFAULT_CFG = () => ({
   pin:"1234",
   devPin:"lancer2026",
   qrBase:"",
+  seguroPct:1, seguroIva:true, seguroClave:"78101800",
+  recoleccion:{capDia:6, sabado:false, anticipacion:1, minHoras:3, desde:8, hasta:19},
   desc:{ on:false, tiers:[{desde:50,pct:5},{desde:100,pct:8},{desde:200,pct:12},{desde:300,pct:19}] },
   destinos:[
     {id:"qro", name:"Querétaro",    transit:"1–2 días",    tMin:1, tMax:2,    ocurre:false, kgRate:2.15},
@@ -60,7 +62,7 @@ const DEFAULT_CFG = () => ({
   ]
 });
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
-(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
+(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones","seguroPct","seguroIva","seguroClave","recoleccion"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
 const saveCfg = () => store.set(KEY_CFG, CFG);
 
@@ -76,15 +78,15 @@ const stageColor = i => ["#dfe5f0","#9bb4e6","#4f78d4","#e0a21b","#b06ad8","#168
 
 /* ==================== Roles ==================== */
 const ROLES = {
-  admin:   {t:"Dirección ALR",      mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora","practica"], who:"Operación completa"},
-  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes","practica"], who:"Pedidos, clientes y facturación"},
-  almacen: {t:"Almacén",            mods:["oper","viajes","almacen","pedidos","docs","dash","scan","practica"], who:"Recibir, cargar y entregar"},
-  operador:{t:"Operador de unidad", mods:["oper","viajes","practica"], who:"Su viaje: cargar, llegar y entregar"},
-  dev:     {t:"LANCER · Desarrollo", mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora","practica"], who:"Acceso interno de LANCER", hidden:true}
+  admin:   {t:"Dirección ALR",      mods:["dash","oper","pedidos","reco","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora","practica"], who:"Operación completa"},
+  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","reco","clientes","fact","docs","reportes","practica"], who:"Pedidos, clientes y facturación"},
+  almacen: {t:"Almacén",            mods:["oper","reco","viajes","almacen","pedidos","docs","dash","scan","practica"], who:"Recibir, cargar y entregar"},
+  operador:{t:"Operador de unidad", mods:["oper","reco","viajes","practica"], who:"Su viaje: cargar, llegar y entregar"},
+  dev:     {t:"LANCER · Desarrollo", mods:["dash","oper","pedidos","reco","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora","practica"], who:"Acceso interno de LANCER", hidden:true}
 };
 const MODS = {
   dash:{t:"Panel general",ic:"▦"}, oper:{t:"Operación",ic:"✋"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escaneo por caja",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
-  almacen:{t:"Almacén",ic:"▣"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
+  almacen:{t:"Almacén",ic:"▣"}, reco:{t:"Recolecciones",ic:"▥"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
   reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}, practica:{t:"Práctica guiada",ic:"✎"}
 };
 
@@ -107,7 +109,7 @@ function discPct(piezas){
   const d = CFG.desc; if(!d || !d.on) return 0;
   let p = 0; d.tiers.forEach(t=>{ if(piezas>=t.desde) p=Math.max(p,t.pct); }); return p;
 }
-function calc(destId, items){
+function calc(destId, items, seg){
   let m3=0,kg=0,kgVol=0,kgCob=0,sub=0,piezas=0,est=false;
   const lines = items.map(it=>{
     const p = pieceCalc(it,destId);
@@ -116,9 +118,12 @@ function calc(destId, items){
   });
   const pct = discPct(piezas), disc = sub*pct/100, net = sub-disc;
   const minApplied = net>0 && net<CFG.minimo;
-  const subtotal = net>0 ? Math.max(net, CFG.minimo) : 0;
-  const iva = subtotal*CFG.iva/100;
-  return {lines, piezas, m3, kg, kgVol, kgCob, sub, discPct:pct, disc, subtotal, minApplied, iva, total:subtotal+iva, est};
+  const flete = net>0 ? Math.max(net, CFG.minimo) : 0;
+  const seguroValor = seg && seg.on ? (+seg.valor||0) : 0;
+  const seguro = flete>0 && seguroValor>0 ? seguroValor*CFG.seguroPct/100 : 0;
+  const subtotal = flete + seguro;
+  const iva = (flete + (CFG.seguroIva?seguro:0))*CFG.iva/100;
+  return {lines, piezas, m3, kg, kgVol, kgCob, sub, discPct:pct, disc, flete, seguro, seguroValor:seguro?seguroValor:0, subtotal, minApplied, iva, total:subtotal+iva, est};
 }
 const dest = id => CFG.destinos.find(d=>d.id===id) || {id, name:id, transit:"", tMin:null, tMax:null};
 const itemName = it => it.custom ? `Medida especial ${it.l}×${it.a}×${it.h} cm` : ((CFG.cajas.find(c=>c.id===it.cajaId)||{}).name || it.name || "Caja");

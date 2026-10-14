@@ -260,6 +260,24 @@ details summary{padding:6px 0}
   table.rt td .chips{justify-content:flex-end}
 }
 
+/* ===== v8: recolecciones ===== */
+.dchips{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
+.dchip{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:8px 6px;cursor:pointer;text-align:center;display:flex;flex-direction:column;gap:2px;min-height:52px}
+.dchip b{font-size:14px}.dchip small{font-size:11px;color:var(--ok);font-weight:700}
+.dchip.on{border-color:var(--c1);background:color-mix(in srgb,var(--c1) 8%,#fff)}
+.dchip:disabled{background:#f1f3f8;cursor:not-allowed}.dchip:disabled small{color:var(--bad)}.dchip:disabled b{color:#9aa5bb}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal .ch{font-size:11px;font-weight:800;text-transform:uppercase;color:var(--mut);text-align:center;padding:4px 0}
+.cc{position:relative;aspect-ratio:1/1;min-height:46px;border:1.5px solid var(--line);border-radius:10px;background:#d6efe0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;overflow:hidden;padding:0;color:var(--ink)}
+.cc.empty{border:0;background:transparent;cursor:default}
+.cc b{font-size:15px}.cc span{font-size:10px;font-weight:800;color:#38465f}
+.cc i{position:absolute;left:0;bottom:0;height:4px;background:var(--c2)}
+.cc.hi{background:#fde9b8}.cc.full{background:#f9c9c9}.cc.off{background:#dfe3ec;color:#8a94a8}
+.cc.blk{background:#cfd5e2;background-image:repeating-linear-gradient(45deg,transparent 0 6px,rgba(0,0,0,.07) 6px 12px)}
+.cc.past{opacity:.5}
+.cc.sel{border-color:var(--c1);box-shadow:0 0 0 3px color-mix(in srgb,var(--c1) 22%,transparent)}
+.cc.today b{color:var(--c1);text-decoration:underline}
+
 </style>
 </head>
 <body>
@@ -12692,7 +12710,7 @@ const fdate = t => t ? new Date(t).toLocaleString("es-MX",{day:"2-digit",month:"
 const fday = t => t ? new Date(t).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}) : "—";
 const fshort = t => new Date(t).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"});
 const pad = (n,l=4) => String(n).padStart(l,"0");
-const APP_VERSION = "v7", APP_DATE = "13 oct 2026";
+const APP_VERSION = "v8", APP_DATE = "13 oct 2026";
 const KEY_CFG = "alr_cfg_v5", KEY_DB = "alr_db_v5", KEY_ROLE = "alr_role_v5";
 const store = {
   mem:{},
@@ -12714,6 +12732,8 @@ const DEFAULT_CFG = () => ({
   pin:"1234",
   devPin:"lancer2026",
   qrBase:"",
+  seguroPct:1, seguroIva:true, seguroClave:"78101800",
+  recoleccion:{capDia:6, sabado:false, anticipacion:1, minHoras:3, desde:8, hasta:19},
   desc:{ on:false, tiers:[{desde:50,pct:5},{desde:100,pct:8},{desde:200,pct:12},{desde:300,pct:19}] },
   destinos:[
     {id:"qro", name:"Querétaro",    transit:"1–2 días",    tMin:1, tMax:2,    ocurre:false, kgRate:2.15},
@@ -12741,7 +12761,7 @@ const DEFAULT_CFG = () => ({
   ]
 });
 let CFG = store.get(KEY_CFG) || DEFAULT_CFG();
-(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
+(function migrateCfg(){ const d=DEFAULT_CFG(); ["empresa","desc","devPin","qrBase","camiones","seguroPct","seguroIva","seguroClave","recoleccion"].forEach(k=>{ if(CFG[k]===undefined) CFG[k]=d[k]; }); CFG.steps=d.steps;
   CFG.destinos.forEach(x=>{ if(x.tMin===undefined){ const m=d.destinos.find(y=>y.id===x.id); x.tMin=m?m.tMin:null; x.tMax=m?m.tMax:null; } }); })();
 const saveCfg = () => store.set(KEY_CFG, CFG);
 
@@ -12757,15 +12777,15 @@ const stageColor = i => ["#dfe5f0","#9bb4e6","#4f78d4","#e0a21b","#b06ad8","#168
 
 /* ==================== Roles ==================== */
 const ROLES = {
-  admin:   {t:"Dirección ALR",      mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora","practica"], who:"Operación completa"},
-  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","clientes","fact","docs","reportes","practica"], who:"Pedidos, clientes y facturación"},
-  almacen: {t:"Almacén",            mods:["oper","viajes","almacen","pedidos","docs","dash","scan","practica"], who:"Recibir, cargar y entregar"},
-  operador:{t:"Operador de unidad", mods:["oper","viajes","practica"], who:"Su viaje: cargar, llegar y entregar"},
-  dev:     {t:"LANCER · Desarrollo", mods:["dash","oper","pedidos","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora","practica"], who:"Acceso interno de LANCER", hidden:true}
+  admin:   {t:"Dirección ALR",      mods:["dash","oper","pedidos","reco","scan","viajes","almacen","clientes","fact","docs","reportes","bitacora","practica"], who:"Operación completa"},
+  ventas:  {t:"Ejecutivo de ventas",mods:["dash","pedidos","reco","clientes","fact","docs","reportes","practica"], who:"Pedidos, clientes y facturación"},
+  almacen: {t:"Almacén",            mods:["oper","reco","viajes","almacen","pedidos","docs","dash","scan","practica"], who:"Recibir, cargar y entregar"},
+  operador:{t:"Operador de unidad", mods:["oper","reco","viajes","practica"], who:"Su viaje: cargar, llegar y entregar"},
+  dev:     {t:"LANCER · Desarrollo", mods:["dash","oper","pedidos","reco","scan","viajes","almacen","clientes","fact","docs","reportes","config","bitacora","practica"], who:"Acceso interno de LANCER", hidden:true}
 };
 const MODS = {
   dash:{t:"Panel general",ic:"▦"}, oper:{t:"Operación",ic:"✋"}, pedidos:{t:"Pedidos",ic:"▤"}, scan:{t:"Escaneo por caja",ic:"⌗"}, viajes:{t:"Viajes y unidades",ic:"⛟"},
-  almacen:{t:"Almacén",ic:"▣"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
+  almacen:{t:"Almacén",ic:"▣"}, reco:{t:"Recolecciones",ic:"▥"}, clientes:{t:"Clientes",ic:"☺"}, fact:{t:"Facturación",ic:"$"}, docs:{t:"Guías y remisiones",ic:"≣"},
   reportes:{t:"Reportes",ic:"◔"}, config:{t:"Configuración (LANCER)",ic:"⚙"}, bitacora:{t:"Bitácora",ic:"☰"}, practica:{t:"Práctica guiada",ic:"✎"}
 };
 
@@ -12788,7 +12808,7 @@ function discPct(piezas){
   const d = CFG.desc; if(!d || !d.on) return 0;
   let p = 0; d.tiers.forEach(t=>{ if(piezas>=t.desde) p=Math.max(p,t.pct); }); return p;
 }
-function calc(destId, items){
+function calc(destId, items, seg){
   let m3=0,kg=0,kgVol=0,kgCob=0,sub=0,piezas=0,est=false;
   const lines = items.map(it=>{
     const p = pieceCalc(it,destId);
@@ -12797,9 +12817,12 @@ function calc(destId, items){
   });
   const pct = discPct(piezas), disc = sub*pct/100, net = sub-disc;
   const minApplied = net>0 && net<CFG.minimo;
-  const subtotal = net>0 ? Math.max(net, CFG.minimo) : 0;
-  const iva = subtotal*CFG.iva/100;
-  return {lines, piezas, m3, kg, kgVol, kgCob, sub, discPct:pct, disc, subtotal, minApplied, iva, total:subtotal+iva, est};
+  const flete = net>0 ? Math.max(net, CFG.minimo) : 0;
+  const seguroValor = seg && seg.on ? (+seg.valor||0) : 0;
+  const seguro = flete>0 && seguroValor>0 ? seguroValor*CFG.seguroPct/100 : 0;
+  const subtotal = flete + seguro;
+  const iva = (flete + (CFG.seguroIva?seguro:0))*CFG.iva/100;
+  return {lines, piezas, m3, kg, kgVol, kgCob, sub, discPct:pct, disc, flete, seguro, seguroValor:seguro?seguroValor:0, subtotal, minApplied, iva, total:subtotal+iva, est};
 }
 const dest = id => CFG.destinos.find(d=>d.id===id) || {id, name:id, transit:"", tMin:null, tMax:null};
 const itemName = it => it.custom ? `Medida especial ${it.l}×${it.a}×${it.h} cm` : ((CFG.cajas.find(c=>c.id===it.cajaId)||{}).name || it.name || "Caja");
@@ -12939,7 +12962,9 @@ function createOrder(q){
   const cl = findOrCreateCliente(q.sol);
   const o = { folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:q.dest, items, sol:{...q.sol}, dst:{...q.dst}, serv:{...q.serv}, obs:q.obs.trim(),
     guia:"", cancelado:false, status:"solicitado", cli:cl.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{...(q.notif||{})}, practice:false, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido capturado en línea",by:"Cliente"}] };
-  o.totals = calc(o.dest, items); o.sc = "0".repeat(o.totals.piezas);
+  o.seguro = q.serv.seguro ? {on:true, valor:+q.seguro.valor||0, file:q.seguro.file||null} : {on:false,valor:0};
+  o.rec = q.serv.recoleccion ? {on:true, dir:q.rec.dir.trim(), contacto:{nombre:q.rec.contacto.nombre.trim(),tel:q.rec.contacto.tel.trim()}, pregunta:q.rec.pregunta.trim(), instr:q.rec.instr.trim(), fecha:q.rec.fecha, desde:q.rec.desde, hasta:q.rec.hasta, estado:"solicitada", solicitadaAt:Date.now()} : {on:false};
+  o.totals = calc(o.dest, items, o.seguro); o.sc = "0".repeat(o.totals.piezas);
   DB.ord.unshift(o); logEv("Pedidos","Pedido nuevo",`${o.folio} · ${o.totals.piezas} cajas · ${money(o.totals.total)}`); saveDB();
   const mis=store.get("alr_mis_v1")||[]; mis.unshift(o.folio); store.set("alr_mis_v1",mis.slice(0,20));
   return o;
@@ -13023,7 +13048,9 @@ function crearFactura(folios){
   const ret = cl.retIva ? subtotal*0.04 : 0;
   const n = nextSeq("fac",1001);
   const f = {id:`${CFG.empresa.serie}-${n}`, serie:CFG.empresa.serie, folio:n, fecha:Date.now(), cli:cl.id, ords:folios.slice(),
-    conceptos: ords.map(o=>({desc:`Servicio de transporte de carga ${CFG.origen} → ${dest(o.dest).name} · guía ${o.guia||"s/g"} · pedido ${o.folio} · ${o.totals.piezas} cajas, ${num(o.totals.kg)} kg, ${num(o.totals.m3,3)} m³`, importe:o.totals.subtotal})),
+    conceptos: ords.flatMap(o=>{ const c=[{desc:`Servicio de transporte de carga ${CFG.origen} → ${dest(o.dest).name} · guía ${o.guia||"s/g"} · pedido ${o.folio} · ${o.totals.piezas} cajas, ${num(o.totals.kg)} kg, ${num(o.totals.m3,3)} m³`, importe:o.totals.flete}];
+      if(o.totals.seguro>0) c.push({desc:`Seguro de mercancía ${CFG.seguroPct}% sobre valor declarado ${money(o.totals.seguroValor)} · pedido ${o.folio}`, importe:o.totals.seguro, seguro:true, clave:CFG.seguroClave});
+      return c; }),
     subtotal, iva, ret, total:subtotal+iva-ret, estado:"borrador", pagos:[], venc:Date.now()+(cl.credito||0)*DAY,
     metodo: cl.credito>0?"PPD":"PUE", forma: cl.credito>0?"99":"03", uso:cl.uso||"G03", uuid:null};
   ords.forEach(o=>o.fac.push(f.id)); DB.fac.unshift(f); logEv("Facturación","Factura creada (borrador)",`${f.id} · ${cl.razon} · ${money(f.total)}`); saveDB(); return f;
@@ -13038,8 +13065,8 @@ function cfdiXML(f){
   const c=cliOf(f.cli), E=CFG.empresa, a=(n,v)=>` ${n}="${xe(v)}"`, m=v=>Number(v).toFixed(2);
   const tasa=(CFG.iva/100).toFixed(6);
   const fecha = new Date(f.fecha).toISOString().slice(0,19);
-  const conc = f.conceptos.map(x=>{ const iv=x.importe*CFG.iva/100, rt=c.retIva?x.importe*0.04:0;
-    return `    <cfdi:Concepto${a("ClaveProdServ","78101800")}${a("Cantidad","1")}${a("ClaveUnidad","E48")}${a("Unidad","Unidad de servicio")}${a("Descripcion",x.desc)}${a("ValorUnitario",m(x.importe))}${a("Importe",m(x.importe))}${a("ObjetoImp","02")}>
+  const conc = f.conceptos.map(x=>{ const iv=(x.seguro&&!CFG.seguroIva)?0:x.importe*CFG.iva/100, rt=c.retIva?x.importe*0.04:0;
+    return `    <cfdi:Concepto${a("ClaveProdServ",x.clave||"78101800")}${a("Cantidad","1")}${a("ClaveUnidad","E48")}${a("Unidad","Unidad de servicio")}${a("Descripcion",x.desc)}${a("ValorUnitario",m(x.importe))}${a("Importe",m(x.importe))}${a("ObjetoImp","02")}>
       <cfdi:Impuestos>
         <cfdi:Traslados><cfdi:Traslado${a("Base",m(x.importe))}${a("Impuesto","002")}${a("TipoFactor","Tasa")}${a("TasaOCuota",tasa)}${a("Importe",m(iv))}/></cfdi:Traslados>${rt?`
         <cfdi:Retenciones><cfdi:Retencion${a("Base",m(x.importe))}${a("Impuesto","002")}${a("TipoFactor","Tasa")}${a("TasaOCuota","0.040000")}${a("Importe",m(rt))}/></cfdi:Retenciones>`:""}
@@ -13071,7 +13098,7 @@ Ruta: ${CFG.origen} → ${d.name} (${d.transit})${e?`\nEntrega estimada: ${etaTe
 Piezas (${t.piezas}):
 ${piezas}
 Volumen: ${num(t.m3,3)} m³ · Peso real: ${num(t.kg)} kg
-Servicios: ${serv}
+Servicios: ${serv}${t.seguro>0?`\nSeguro ${CFG.seguroPct}% sobre ${money(t.seguroValor)}: ${money(t.seguro)}`:""}${recVigente(o)?`\nRecolección: ${fshort(fromYmd(o.rec.fecha))} ${recVentana(o.rec)} · ${o.rec.dir} · ${o.rec.contacto.nombre} ${o.rec.contacto.tel}${o.rec.pregunta?` · preguntar por ${o.rec.pregunta}`:""}${o.rec.instr?` · ${o.rec.instr}`:""}`:""}
 Subtotal: ${money(t.subtotal)}${t.minApplied?" (mínimo por embarque)":""} · IVA: ${money(t.iva)} · *Total: ${money(t.total)}*${t.est?"\n⚠ Incluye medida especial: precio estimado, requiere validación.":""}
 
 Solicitante: ${o.sol.nombre} · ${o.sol.empresa||""} · ${o.sol.tel} · ${o.sol.correo}
@@ -13083,7 +13110,9 @@ function orderJSON(o){
     cliente:{id:c.id, razon:c.razon, rfc:c.rfc},
     ruta:{origen:CFG.origen,destino:dest(o.dest).name,transito:dest(o.dest).transit},
     piezas:t.lines.map(l=>({descripcion:itemName(l),cantidad:l.qty,largo_cm:l.l,ancho_cm:l.a,alto_cm:l.h,peso_kg_unit:l.kg,m3:+l.m3.toFixed(4),precio_unit:+l.unit.toFixed(2),importe:+l.line.toFixed(2),estimado:!!l.est})),
-    totales:{piezas:t.piezas,m3:+t.m3.toFixed(4),kg_reales:+t.kg.toFixed(2),kg_volumetricos:+t.kgVol.toFixed(2),kg_cobrables:+t.kgCob.toFixed(2),descuento_pct:t.discPct,subtotal:+t.subtotal.toFixed(2),minimo_aplicado:t.minApplied,iva:+t.iva.toFixed(2),total:+t.total.toFixed(2)},
+    seguro:{activo:!!(o.seguro&&o.seguro.on),valor_declarado:t.seguroValor,porcentaje:CFG.seguroPct,importe:+t.seguro.toFixed(2),factura_mercancia:(o.seguro&&o.seguro.file)?o.seguro.file.name:null},
+    recoleccion:recVigente(o)?{fecha:o.rec.fecha,desde:o.rec.desde,hasta:o.rec.hasta,direccion:o.rec.dir,contacto:o.rec.contacto,preguntar_por:o.rec.pregunta,instrucciones:o.rec.instr,estado:o.rec.estado,unidad:o.rec.unidad||null}:null,
+    totales:{piezas:t.piezas,flete:+t.flete.toFixed(2),seguro:+t.seguro.toFixed(2),m3:+t.m3.toFixed(4),kg_reales:+t.kg.toFixed(2),kg_volumetricos:+t.kgVol.toFixed(2),kg_cobrables:+t.kgCob.toFixed(2),descuento_pct:t.discPct,subtotal:+t.subtotal.toFixed(2),minimo_aplicado:t.minApplied,iva:+t.iva.toFixed(2),total:+t.total.toFixed(2)},
     cajas_por_etapa:stageCounts(o), servicios:o.serv, solicitante:o.sol, destinatario:o.dst, observaciones:o.obs||"",
     requiere_validacion:t.est, entrega:o.pod, historial:o.history };
 }
@@ -13149,14 +13178,24 @@ function seedDB(){
   fOrd(o9,"emitida",false,3);
   const fp=fOrd(o3,"emitida",false,1); fp.pagos.push({at:now,monto:20000,forma:"03",ref:"Anticipo SPEI"});
   [["trailer"],["trailer"],["torton"],["rabon"]].forEach((t,i)=>{ if(db.via[i]) db.via[i].tipo=t[0]; });
-  db.ord.forEach(o=>{ o.inc=[]; o.firmas={}; o.notif={}; o.pr={}; });
+  db.ord.forEach(o=>{ o.inc=[]; o.firmas={}; o.notif={}; o.pr={}; if(!o.rec) o.rec={on:false}; if(!o.seguro) o.seguro={on:false,valor:0}; });
+  db.cal={bloq:{}};
+  const dRec=n=>ymd(addBiz(now,n));
+  const recSeed=(o,dia,desde,hasta,estado,extra)=>{ o.rec={on:true,dir:o.sol.empresa+" — "+(db.cli.find(c=>c.id===o.cli)||{}).dir,contacto:{nombre:o.sol.nombre,tel:o.sol.tel},pregunta:"Recepción / almacén",instr:"Anunciarse en caseta y pedir al jefe de almacén.",fecha:dRec(dia),desde,hasta,estado,solicitadaAt:now-3*H,...extra}; };
+  recSeed(o1,1,"09:00","12:00","solicitada"); recSeed(o6,1,"13:00","17:00","solicitada",{instr:"Maquinaria pesada: se necesita montacargas. Entrar por la puerta 2."});
+  recSeed(o10,2,"10:00","14:00","programada",{unidad:"Camioneta 2",nota:"Llegamos entre 10:30 y 11:30"}); recSeed(o2,2,"08:00","11:00","programada",{unidad:"Camioneta 1"});
+  recSeed(o8,3,"14:00","18:00","solicitada",{pregunta:"Con Rosa Elena, almacén 2",instr:"Cargar por andén trasero."});
+  db.cal.bloq[dRec(5)]="Mantenimiento de unidades";
+  o2.seguro={on:true,valor:180000,file:null}; o2.totals=calc(o2.dest,o2.items,o2.seguro);
+  o1.seguro={on:true,valor:95000,file:null}; o1.totals=calc(o1.dest,o1.items,o1.seguro);
   db.log=[]; logEv("Sistema","Datos de ejemplo cargados","8 clientes, 10 pedidos, 4 viajes, 4 facturas");
   return db;
 }
 function loadDB(){
   DB = store.get(KEY_DB);
   if(!DB || !DB.cli || !DB.ord){ seedDB(); saveDB(); }
-  DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; });
+  if(!DB.cal) DB.cal={bloq:{}};
+  DB.ord.forEach(o=>{ if(!o.seguro) o.seguro={on:false,valor:0}; if(!o.rec) o.rec={on:false}; o.totals=calc(o.dest,o.items,o.seguro); if(!o.sc||o.sc.length!==o.totals.piezas) o.sc="0".repeat(o.totals.piezas); if(!o.inc) o.inc=[]; if(!o.firmas) o.firmas={}; if(!o.notif) o.notif={}; if(!o.pr) o.pr={}; });
   DB.via.forEach(v=>{ if(!v.tipo) v.tipo="torton"; });
 }
 loadDB();
@@ -13176,6 +13215,7 @@ function cargaTabla(o, precio){
     <table style="margin:10px 0 0 auto;width:300px;border-collapse:collapse"><tr><td>Flete</td><td class="r">${money(t.sub)}</td></tr>
     ${t.discPct?`<tr><td>Descuento por volumen ${t.discPct}%</td><td class="r">−${money(t.disc)}</td></tr>`:""}
     ${t.minApplied?`<tr><td>Mínimo por embarque</td><td class="r">${money(CFG.minimo)}</td></tr>`:""}
+    ${t.seguro>0?`<tr><td>Seguro ${CFG.seguroPct}% s/ ${money(t.seguroValor)}</td><td class="r">${money(t.seguro)}</td></tr>`:""}
     <tr><td>Subtotal</td><td class="r">${money(t.subtotal)}</td></tr><tr><td>IVA ${CFG.iva}%</td><td class="r">${money(t.iva)}</td></tr><tr><td><b>Total</b></td><td class="r"><b>${money(t.total)}</b></td></tr></table>
     ${t.est?`<div style="font-size:11px;margin-top:4px">Incluye medida especial: precio estimado, sujeto a validación de ALR.</div>`:""}` : "";
   return `<table style="width:100%;border-collapse:collapse"><thead><tr><th>Cant.</th><th>Descripción</th><th>Medidas (cm)</th><th>kg c/u</th><th>m³</th>${pr}</tr></thead><tbody>
@@ -13186,12 +13226,24 @@ function partes(o){
   return `<div class="two"><div><b>REMITENTE</b><br>${esc(o.sol.empresa||o.sol.nombre)}<br>${esc(o.sol.nombre)} · ${esc(o.sol.tel)}<br>${esc(o.sol.correo)}</div>
     <div><b>DESTINATARIO</b><br>${esc(o.dst.nombre)}<br>${esc(o.dst.dir)}<br>${esc(o.dst.tel)}</div></div>`;
 }
+function confBloque(o){
+  const c=o.conf||{}, r=c.recepcion, p=o.pod; let h="";
+  if(r) h+=`<p><b>Recepción en almacén:</b> ${r.cajas} de ${r.de} cajas ${r.cajas===r.de?"✓ completas":"(faltan "+(r.de-r.cajas)+")"} · confirmó ${esc(r.nombre||r.por)} · ${fdate(r.at)}${r.nota?` · ${esc(r.nota)}`:""}</p>`;
+  if(p&&p.cajas!=null) h+=`<p><b>Entrega al cliente:</b> ${p.cajas} de ${p.de} cajas ${p.cajas===p.de?"✓ completas":"(diferencia "+(p.de-p.cajas)+")"} · recibió ${esc(p.nombre)} · ${fdate(p.at)}</p>`;
+  else if((o.entregas||[]).length) h+=`<p><b>Entregas parciales:</b> ${o.entregas.map(e=>`${e.cajas} cajas a ${esc(e.nombre)} (${fdate(e.at)})`).join("; ")}</p>`;
+  return h;
+}
+function recBloque(o){
+  if(!recVigente(o)) return "";
+  const r=o.rec;
+  return `<p style="border:1px solid #999;padding:6px 8px"><b>Recolección:</b> ${esc(fshort(fromYmd(r.fecha)))} · ${esc(recVentana(r))} · ${esc(r.dir)}<br><b>Contacto:</b> ${esc(r.contacto.nombre)} · ${esc(r.contacto.tel)}${r.pregunta?` &nbsp; <b>Preguntar por:</b> ${esc(r.pregunta)}`:""}${r.instr?`<br><b>Instrucciones:</b> ${esc(r.instr)}`:""}</p>`;
+}
 function guiaDoc(o){
   const e=eta(o.dest,o.createdAt), f=(o.firmas||{}).remitente;
   return `<div class="doc">${docHead(o.guia?"GUÍA DE EMBARQUE":"PRE-GUÍA · HOJA DE EMBARQUE", o.guia||o.folio, `${qrBase()}#g.${o.folio}`)}
     ${o.guia?"":`<p class="wm">Pre-guía: queda sujeta a confirmación de ${esc(CFG.brand.short)}. Entrega esta hoja con tus cajas; el QR abre el pedido en el almacén.</p>`}
     <p style="font-size:14px"><b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)} &nbsp; <b>Ruta:</b> ${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> (${esc(dest(o.dest).transit)})${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o,true)}
+    ${partes(o)}${recBloque(o)}${cargaTabla(o,true)}${confBloque(o)}
     <p><b>Servicios:</b> ${esc(servTxt(o))} &nbsp; <b>Cajas a etiquetar:</b> ${o.totals.piezas}</p>${o.obs?`<p><b>Observaciones:</b> ${esc(o.obs)}</p>`:""}
     <div class="sig"><div>${firmaTag(f&&f.img,"firma remitente")}Firma remitente${f?` · ${esc(f.nombre)}`:""}</div><div>Firma operador / recolección</div><div>Firma almacén</div></div></div>`;
 }
@@ -13199,7 +13251,7 @@ function remisionDoc(o){
   const e=eta(o.dest,o.createdAt), p=o.pod;
   return `<div class="doc">${docHead("REMISIÓN DE ENTREGA", o.rem||"(sin remisión)", `${qrBase()}#g.${o.folio}`)}
     <p style="font-size:14px"><b>Guía:</b> ${esc(o.guia||"—")} &nbsp; <b>Pedido:</b> ${esc(o.folio)} &nbsp; <b>Fecha:</b> ${fday(o.createdAt)}${e?` &nbsp; <b>Entrega estimada:</b> ${esc(etaText(e))}`:""}</p>
-    ${partes(o)}${cargaTabla(o,true)}
+    ${partes(o)}${cargaTabla(o,true)}${confBloque(o)}
     <p>Recibí de conformidad la mercancía descrita, en buen estado y completa (${o.totals.piezas} bultos).</p>
     ${p?`<p><b>Recibió:</b> ${esc(p.nombre)} ${p.id?`· ID: ${esc(p.id)}`:""} · ${fdate(p.at)}${p.notas?` · ${esc(p.notas)}`:""}</p>`:""}
     <div class="sig"><div>${firmaTag(p&&p.firma,"firma de quien recibe")}Nombre y firma de quien recibe${p?` · ${esc(p.nombre)}`:""}</div><div>${p?fdate(p.at):""}<br>Fecha y hora</div><div>Operador ${esc(CFG.brand.short)}</div></div>
@@ -13223,7 +13275,7 @@ function factDoc(f){
     <div><b>RECEPTOR</b><br>${esc(c.razon)}<br>RFC ${esc(c.rfc||"(pendiente)")} · Régimen ${esc(c.regimen)} · CP ${esc(c.cp||"—")}<br>Uso CFDI ${esc(f.uso)}</div></div>
     <p><b>Fecha:</b> ${fday(f.fecha)} &nbsp; <b>Método:</b> ${esc(f.metodo)} &nbsp; <b>Forma:</b> ${esc(f.forma)} &nbsp; <b>Moneda:</b> MXN &nbsp; <b>UUID:</b> ${esc(f.uuid||"— sin timbrar —")}</p>
     <table style="width:100%;border-collapse:collapse"><thead><tr><th>Clave SAT</th><th>Descripción</th><th>Unidad</th><th>Cant.</th><th>Importe</th></tr></thead><tbody>
-    ${f.conceptos.map(x=>`<tr><td>78101800</td><td>${esc(x.desc)}</td><td>E48</td><td class="c">1</td><td class="r">${money(x.importe)}</td></tr>`).join("")}</tbody></table>
+    ${f.conceptos.map(x=>`<tr><td>${esc(x.clave||"78101800")}</td><td>${esc(x.desc)}</td><td>E48</td><td class="c">1</td><td class="r">${money(x.importe)}</td></tr>`).join("")}</tbody></table>
     <table style="margin:10px 0 0 auto;width:260px;border-collapse:collapse"><tr><td>Subtotal</td><td class="r">${money(f.subtotal)}</td></tr><tr><td>IVA ${CFG.iva}%</td><td class="r">${money(f.iva)}</td></tr>${f.ret?`<tr><td>Retención IVA 4%</td><td class="r">−${money(f.ret)}</td></tr>`:""}<tr><td><b>Total</b></td><td class="r"><b>${money(f.total)}</b></td></tr></table>
     <p style="font-size:11px">Estado: ${esc(FAC_ST[est]||est)} · Complemento Carta Porte: se agrega cuando el traslado utiliza vía federal (se arma con los datos del pedido y la guía).</p></div>`;
 }
@@ -13242,7 +13294,7 @@ const S = { view:"cotizar", mod:"dash", modals:[], drawer:null, done:null, track
   fEstado:"todos", fDest:"todos", fq:"", fCliQ:"", ftab:"fac", docTab:"rem", cfgTab:"marca", repDays:30, logQ:"", vtab:"activos", cliSel:null,
   scan:{mode:"auto", via:"", ord:"", feed:[], cam:false}, scanResult:null, pendingScan:null };
 let Q = null;
-const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, notif:{wa:false,mail:false}, obs:"" });
+const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, notif:{wa:false,mail:false}, rec:{dir:"",fecha:"",desde:"09:00",hasta:"12:00",contacto:{nombre:"",tel:""},pregunta:"",instr:""}, seguro:{valor:"",file:null}, base:null, obs:"" });
 Q = newQ();
 const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id===it.cajaId)||CFG.cajas[0]; return {...it, cajaId:c.id, l:c.l,a:c.a,h:c.h,kg:c.kg}; };
 
@@ -13292,6 +13344,7 @@ function viewCotizar(){
   </div></div>
   <div class="wrap pull"><div class="layout">
     <div>
+      ${repeatCardHTML()}
       <div class="card">
         <div class="h2"><span class="stepn">1</span>Ruta</div>
         <div class="row2">
@@ -13308,13 +13361,15 @@ function viewCotizar(){
       <div class="card">
         <div class="h2"><span class="stepn">3</span>Servicios</div>
         <div class="grid" style="gap:10px">
-          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">ALR la coordina; el costo de maniobras se confirma al aceptar el pedido.</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">Eliges día y horario (ventana de al menos 3 horas); ALR lo confirma.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="entrega" ${Q.serv.entrega?"checked":""}><span><b>Entrega en domicilio del destinatario</b><br><span class="mut sm">Costo de reparto se confirma por ALR.</span></span></label>
-          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">ALR te contactará con el procedimiento (factura con subtotal).</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">Cuesta el ${CFG.seguroPct}% del valor declarado. Puedes subir la factura de tu mercancía.</span></span></label>
+          <div id="q-seg"></div>
           <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="wa" ${Q.notif.wa?"checked":""}><span><b>Enviarme mi guía y avances por WhatsApp</b><br><span class="mut sm">Se abre WhatsApp con el mensaje listo para enviar.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="mail" ${Q.notif.mail?"checked":""}><span><b>Enviarme mi guía y avances por correo</b><br><span class="mut sm">Se abre tu correo con el mensaje listo.</span></span></label>
         </div>
       </div>
+      <div id="q-rec"></div>
       <div class="card">
         <div class="h2"><span class="stepn">4</span>Quién envía</div>
         <div class="row2">
@@ -13371,12 +13426,14 @@ function qvalid(){
   if(!Q.dst.dir.trim()) m.push("dirección de entrega");
   if(Q.dst.tel.replace(/\D/g,"").length<8) m.push("teléfono del destinatario");
   if(Q.items.some(i=>!(i.qty>=1))) m.push("cantidad de cajas");
+  if(Q.serv.seguro && !(parseFloat(Q.seguro.valor)>0)) m.push("valor declarado del seguro");
+  if(Q.serv.recoleccion) recValida(Q.rec).forEach(x=>m.push("recolección: "+x));
   if(Q.items.some(i=>i.custom&&!(i.l>0&&i.a>0&&i.h>0&&i.kg>0))) m.push("medidas de la pieza especial");
   return {ok:!m.length, msg:m.length?"Falta: "+m.join(", "):""};
 }
 function renderSummary(){
   const items = Q.items.map(withDims).filter(it=>it.l>0&&it.a>0&&it.h>0&&it.kg>0&&it.qty>0);
-  const c = calc(Q.dest, items), d = dest(Q.dest), v = qvalid();
+  const c = calc(Q.dest, items, {on:Q.serv.seguro, valor:parseFloat(Q.seguro.valor)||0}), d = dest(Q.dest), v = qvalid();
   $("#q-sum").innerHTML = `
     <div class="h2" style="margin-bottom:10px">Resumen</div>
     <div class="mut sm" style="margin-bottom:12px">${esc(CFG.origen)} → <b>${esc(d.name)}</b> · ${esc(d.transit)}</div>
@@ -13389,6 +13446,7 @@ function renderSummary(){
       <dt>Flete</dt><dd class="mono">${money(c.sub)}</dd>
       ${c.discPct?`<dt>Descuento por volumen ${c.discPct}%</dt><dd class="mono">−${money(c.disc)}</dd>`:""}
       ${c.minApplied?`<dt>Mínimo por embarque</dt><dd class="mono">${money(CFG.minimo)}</dd>`:""}
+      ${c.seguro>0?`<dt>Seguro ${CFG.seguroPct}% (valor ${money(c.seguroValor)})</dt><dd class="mono">${money(c.seguro)}</dd>`:""}
       <dt>IVA ${CFG.iva}%</dt><dd class="mono">${money(c.iva)}</dd>
     </dl>
     <div class="tot"><span>Total</span><b class="mono">${money(c.total)}</b></div>
@@ -13417,6 +13475,7 @@ function viewDone(){
         <div class="mut sm">Total ${money(o.totals.total)} · ${esc(CFG.origen)} → ${esc(dest(o.dest).name)} · ${o.totals.piezas} cajas</div>
       </div>
       ${etaBox(o.dest,o.createdAt)}
+      ${recVigente(o)?`<div style="margin-top:12px">${recResumen(o)}</div>`:""}
       <div style="text-align:left;margin-top:18px"><div class="tag" style="margin-bottom:8px">Qué sigue</div>
         <div class="pstep now"><span class="pn">1</span><div style="flex:1"><b>Descarga tu pre-guía</b><div class="sm mut">Es la hoja con el detalle y el precio. Llévala o mándala a tu almacén.</div></div><button class="btn sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Ver / guardar PDF</button></div>
         <div class="pstep"><span class="pn">2</span><div style="flex:1"><b>Descarga y pega las etiquetas QR</b><div class="sm mut">Una por caja, con las medidas máximas declaradas.</div></div><button class="btn sm" data-act="labels" data-arg="${esc(o.folio)}">Ver etiquetas</button></div>
@@ -13426,6 +13485,7 @@ function viewDone(){
         <a class="btn ${o.notif&&o.notif.wa?"":"sec"}" href="${esc(wa)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
         <a class="btn ${o.notif&&o.notif.mail?"":"sec"}" href="${esc(ml)}" target="_blank" rel="noopener">Enviar por correo</a>
         <button class="btn sec" data-act="track" data-arg="${esc(o.folio)}">Ver seguimiento</button>
+        <button class="btn sec" data-act="repeat" data-arg="${esc(o.folio)}">Repetir este pedido</button>
         <button class="btn sec" data-act="newquote">Nueva cotización</button>
       </div>
       <p class="mut sm" style="margin-top:16px">Guarda tu folio: con él consultas el estado de tu envío cuando quieras.</p>
@@ -13472,9 +13532,12 @@ function viewRastreo(){
       </div>
       <div class="mut sm" style="margin-bottom:6px">${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> · ${o.totals.piezas} cajas · ${num(o.totals.m3,3)} m³ · Destinatario: ${esc(o.dst.nombre)}</div>
       ${o.status==="entregado"?`<div class="note ok" style="margin:12px 0"><b>Entregado</b>${o.pod?` a ${esc(o.pod.nombre)} · ${fdate(o.pod.at)}`:""}</div>`:(o.cancelado?"":etaBox(o.dest,o.createdAt))}
-      <div style="margin:16px 0"><div class="tag" style="margin-bottom:6px">Tus cajas</div>${boxProgress(o,true)}</div>
+      ${recVigente(o)?`<div style="margin:12px 0">${recResumen(o)}</div>`:""}
+      <div style="margin:16px 0"><div class="tag" style="margin-bottom:6px">Tus cajas</div>${boxProgress(o,true)}
+        ${o.conf&&o.conf.recepcion?`<div class="note ${o.conf.recepcion.cajas===o.conf.recepcion.de?"ok":""} sm" style="margin-top:8px"><b>Almacén confirmó</b> ${o.conf.recepcion.cajas} de ${o.conf.recepcion.de} cajas · ${fdate(o.conf.recepcion.at)}</div>`:""}
+        ${o.pod&&o.pod.cajas!=null?`<div class="note ok sm" style="margin-top:8px"><b>Entrega confirmada:</b> ${o.pod.cajas} de ${o.pod.de} cajas · recibió ${esc(o.pod.nombre)}</div>`:((o.entregas||[]).length?`<div class="note sm" style="margin-top:8px"><b>Entrega parcial:</b> ${o.entregas.reduce((s,e)=>s+e.cajas,0)} de ${o.sc.length} cajas entregadas</div>`:"")}</div>
       ${timelineHTML(o)}
-      <div class="chips" style="margin-top:6px"><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}">Imprimir etiquetas QR</button></div>
+      <div class="chips" style="margin-top:6px"><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}">Imprimir etiquetas QR</button><button class="btn sec sm" data-act="repeat" data-arg="${esc(o.folio)}">Repetir pedido</button></div>
     </div>`:""}
   </div>`;
 }
@@ -13514,9 +13577,9 @@ function viewSistema(){
   if(!allowed(S.mod)) S.mod = ROLES[ROLE].mods[0];
   const porConf = DB.ord.filter(o=>!o.cancelado&&o.status==="solicitado").length;
   const venc = DB.fac.filter(f=>facEstado(f)==="vencida").length;
-  const nb = {pedidos:porConf, fact:venc};
+  const nb = {pedidos:porConf, fact:venc, reco:DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.estado==="solicitada").length};
   const nav = ROLES[ROLE].mods.map(m=>`<button class="nv ${S.mod===m?"on":""}" data-act="mod" data-arg="${m}"><span>${MODS[m].ic}</span>${MODS[m].t}${nb[m]?`<span class="n">${nb[m]}</span>`:""}</button>`).join("");
-  const body = {dash:modDash,oper:modOper,practica:modPractica,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
+  const body = {dash:modDash,reco:modReco,oper:modOper,practica:modPractica,pedidos:modPedidos,scan:modScan,viajes:modViajes,almacen:modAlmacen,clientes:modClientes,fact:modFact,docs:modDocs,reportes:modReportes,config:modConfig,bitacora:modBitacora}[S.mod]();
   return `<div class="erp"><aside class="side"><div class="who"><span class="tag">Sesión</span><b>${esc(ROLES[ROLE].t)}</b><button class="btn ghost sm" style="padding:0" data-act="logout">Cerrar sesión</button></div>${nav}<button class="nv" data-act="logout"><span>⎋</span>Salir</button></aside><div class="main">${body}</div></div>`;
 }
 /* ---- resumen de envío (se reutiliza en facturas, guías, remisiones y escáner) ---- */
@@ -13554,6 +13617,7 @@ function modDash(){
   DB.fac.filter(f=>facEstado(f)==="vencida").forEach(f=>alerts.push({k:"bad",t:`Factura ${f.id} vencida`,s:`${cliOf(f.cli).razon} · saldo ${money(facSaldo(f))}`,a:"modgo",arg:"fact"}));
   DB.via.filter(v=>v.status==="cargando").forEach(v=>alerts.push({k:"warn",t:`${v.id} cargando (${v.unidad})`,s:`Faltan ${viajeFaltantes(v)} cajas por subir · destino ${dest(v.dest).name}`,a:"modgo",arg:"viajes"}));
   act.filter(o=>(o.inc||[]).some(x=>x.tipo==="medidas")).forEach(o=>alerts.push({k:"bad",t:`${o.folio} con medidas fuera de lo declarado`,s:"Revisar ajuste de tarifa",a:"open",arg:o.folio}));
+  { const rp=DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.estado==="solicitada"); if(rp.length) alerts.push({k:"warn",t:`${rp.length} recolección(es) por confirmar`,s:`La más próxima: ${fshort(fromYmd(rp.map(o=>o.rec.fecha).sort()[0]))}`,a:"modgo",arg:"reco"}); }
   act.filter(o=>o.totals.est&&o.status==="solicitado").forEach(o=>alerts.push({k:"warn",t:`${o.folio} con medida especial`,s:"Validar precio antes de confirmar",a:"open",arg:o.folio}));
   DB.cli.filter(c=>c.pendiente).forEach(c=>alerts.push({k:"warn",t:`Cliente ${c.razon} sin datos fiscales`,s:"Completar RFC y régimen para facturar",a:"modgo",arg:"clientes"}));
   const porEtapa = CFG.steps.map(s=>({t:s.t,n:act.filter(o=>o.status===s.k).length}));
@@ -13627,7 +13691,7 @@ function drawerHTML(o){
   return `<div class="drawer-bg" data-act="drawerbg"><div class="drawer">
     <div class="noprint" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <button class="btn sec sm" data-act="closedrawer">← Volver</button>
-      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><a class="btn sec sm" href="${esc(waLink(o.sol.tel,shareText(o)))}" target="_blank" rel="noopener">Enviar WhatsApp</a><a class="btn sec sm" href="${esc(mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,shareText(o)))}" target="_blank" rel="noopener">Enviar correo</a><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar</button></div>
+      <div class="chips"><button class="btn sec sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Guía</button><button class="btn sec sm" data-act="doc" data-arg="rem|${esc(o.folio)}">Remisión</button><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}" data-from="sistema">Etiquetas QR</button><button class="btn sec sm" data-act="repeat" data-arg="${esc(o.folio)}">Repetir pedido</button><a class="btn sec sm" href="${esc(waLink(o.sol.tel,shareText(o)))}" target="_blank" rel="noopener">Enviar WhatsApp</a><a class="btn sec sm" href="${esc(mailLink(o.sol.correo,`Pedido ${o.folio} · ${CFG.brand.short}`,shareText(o)))}" target="_blank" rel="noopener">Enviar correo</a><button class="btn sec sm" data-act="copytxt" data-arg="${esc(o.folio)}">Copiar</button></div>
     </div>
     <div class="card">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
@@ -13639,9 +13703,14 @@ function drawerHTML(o){
       ${atrasado(o)?`<div class="note bad sm" style="margin-top:12px">Este pedido va con retraso respecto a la fecha estimada.</div>`:""}
     </div>
     ${o.status==="solicitado"&&!o.cancelado?`<div class="card noprint" style="border:2px solid var(--c1)"><div class="h2">Confirmar pedido</div><p class="mut sm" style="margin:0 0 12px">Al confirmar se asigna número de guía y se genera la remisión. El cliente lo ve de inmediato en su seguimiento.</p><button class="btn" data-act="confirmord" data-arg="${esc(o.folio)}">Confirmar y generar guía + remisión</button></div>`:""}
+    ${recVigente(o)?`<div class="card"><div class="h2">Recolección</div>${recCard(o)}<button class="btn sec sm noprint" data-act="recver" data-arg="${esc(o.folio)}">Ver en el calendario</button></div>`:""}
+    <div class="card"><div class="h2">Seguro de la mercancía</div>${o.seguro&&o.seguro.on?`<div class="sm">Valor declarado <b>${money(t.seguroValor)}</b> · seguro ${CFG.seguroPct}% = <b>${money(t.seguro)}</b>${o.seguro.file?`<br>Factura de la mercancía: <b>${esc(o.seguro.file.name)}</b> (${num(o.seguro.file.size/1024,0)} KB)`:`<br><span class="mut">Sin factura de mercancía adjunta.</span>`}</div><div class="chips noprint" style="margin-top:10px">${o.seguro.file?`<button class="btn sec sm" data-act="segdl" data-arg="${esc(o.folio)}">Ver / descargar factura</button>`:""}<button class="btn sec sm" data-act="segedit" data-arg="${esc(o.folio)}">Editar seguro</button></div>`:`<div class="sm mut">Este pedido no tiene seguro.</div><button class="btn sec sm noprint" style="margin-top:10px" data-act="segedit" data-arg="${esc(o.folio)}">Agregar seguro (${CFG.seguroPct}%)</button>`}</div>
     ${(o.inc||[]).length?`<div class="card" style="border:2px solid #e0a21b"><div class="h2">Incidencias <span class="pill warn">${o.inc.length}</span></div>${o.inc.map(x=>`<div class="sm" style="padding:6px 0;border-bottom:1px solid var(--line)"><b>${esc(x.tipo==="medidas"?"Medidas":x.tipo==="conteo"?"Conteo":"Nota")}</b> · ${esc(x.detalle)}${x.extra>0?` · ajuste estimado <b>${money(x.extra)}</b>`:""}<div class="xs mut">${fdate(x.at)} · ${esc(x.por)}</div></div>`).join("")}</div>`:""}
     <div class="card"><div class="h2">Cajas escaneadas <span class="pill ${n-c[0]===n?"ok":"warn"}">${n-c[0]} de ${n} recibidas</span></div>
       ${boxProgress(o,false)}
+      ${o.conf&&o.conf.recepcion?`<div class="sm" style="margin-top:8px">Almacén confirmó <b>${o.conf.recepcion.cajas} de ${o.conf.recepcion.de}</b> cajas${o.conf.recepcion.nombre?` · ${esc(o.conf.recepcion.nombre)}`:""} · ${fdate(o.conf.recepcion.at)}</div>`:""}
+      ${o.pod&&o.pod.cajas!=null?`<div class="sm">Cliente confirmó <b>${o.pod.cajas} de ${o.pod.de}</b> cajas · ${esc(o.pod.nombre)} · ${fdate(o.pod.at)}</div>`:""}
+      ${stIdx(o)>=1&&!o.cancelado?`<div class="chips noprint" style="margin-top:8px"><button class="btn sec sm" data-act="corregir" data-arg="${esc(o.folio)}">Corregir conteo</button></div>`:""}
       ${stIdx(o)>=1&&falt?`<div class="note sm" style="margin-top:10px"><b>Faltan por recibir en almacén:</b> cajas ${esc(falt)}</div>`:""}
       ${stIdx(o)>=1&&!falt?`<div class="note ok sm" style="margin-top:10px">Conciliación completa: las ${n} cajas fueron recibidas.</div>`:""}
       <div class="boxes">${n<=400?Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join(""):""}</div>
@@ -13658,7 +13727,7 @@ function drawerHTML(o){
       <div class="scroll"><table><thead><tr><th>Pieza</th><th class="r">Cant</th><th>Medidas</th><th class="r">kg c/u</th><th class="r">m³</th><th class="r">Importe</th></tr></thead>
       <tbody>${t.lines.map(l=>`<tr><td>${esc(itemName(l))}${l.est?` <span class="pill warn">estimado</span>`:""}</td><td class="r mono">${l.qty}</td><td class="sm">${l.l}×${l.a}×${l.h} cm</td><td class="r mono">${num(l.kgU,1)}</td><td class="r mono">${num(l.m3,3)}</td><td class="r mono">${money(l.line)}</td></tr>`).join("")}</tbody></table></div>
       <div class="row3" style="margin-top:14px">
-        ${[["Cajas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Subtotal",money(t.subtotal)],["IVA",money(t.iva)],["Total",money(t.total)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
+        ${[["Cajas",t.piezas],["Volumen",num(t.m3,3)+" m³"],["Peso real",num(t.kg)+" kg"],["Seguro",t.seguro>0?money(t.seguro):"—"],["Subtotal",money(t.subtotal)],["IVA",money(t.iva)],["Total",money(t.total)]].map(([a,b])=>`<div style="background:var(--soft);padding:10px;border-radius:10px"><div class="mut sm">${a}</div><b class="mono">${b}</b></div>`).join("")}
       </div>
       <div class="sm mut" style="margin-top:10px">Flete ${money(t.sub)}${t.discPct?` · descuento ${t.discPct}%`:""}${t.minApplied?` → mínimo ${money(CFG.minimo)}`:""} · Servicios: ${esc(servTxt(o))}</div>
     </div>
@@ -13706,7 +13775,8 @@ function scanReconHTML(){
     ${boxProgress(o,false)}
     ${done===n?`<div class="note ok sm" style="margin-top:10px">Conciliación completa: entraron las ${n} cajas ✓</div>`:`<div class="note sm" style="margin-top:10px"><b>Faltan ${n-done} cajas:</b> ${esc(falt)}</div>`}
     ${n<=400?`<div class="boxes">${Array.from({length:n},(_,k)=>`<i class="s${o.sc[k]}" title="Caja ${k+1}"></i>`).join("")}</div>`:""}
-    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button></div>`;
+    ${!auto&&stIdx(o)>=1?`<div class="card flat" style="margin-top:12px"><b class="sm">Cargar o modificar a mano: "${esc(st.t)}"</b><div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap"><input id="adj-k" inputmode="numeric" autocomplete="off" value="${done}" style="max-width:110px;font-weight:800;text-align:center"><span class="sm mut">de ${n} cajas</span><button class="btn sec sm" data-act="adjapply" data-arg="${esc(o.folio)}|${st.i}">Guardar conteo</button></div></div>`:""}
+    <div class="chips noprint" style="margin-top:10px"><button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver envío completo</button><button class="btn sec sm" data-act="corregir" data-arg="${esc(o.folio)}">Corregir conteo</button></div>`;
 }
 function refreshScan(){ const a=$("#scan-feed"); if(a) a.innerHTML=scanFeedHTML(); const b=$("#scan-recon"); if(b) b.innerHTML=scanReconHTML(); }
 function submitScan(code){
@@ -13994,6 +14064,7 @@ function modConfig(){
     <button class="btn sec sm" data-act="addtier" style="margin-top:10px">+ Agregar escalón</button>
     <div class="note sm" style="margin-top:16px">Los escalones son de ejemplo y están apagados por defecto: ALR confirmó que existe descuento por volumen pero no entregó su tabla. El único dato firme es 300 cajas de 30 kg a Monterrey en $26,750 por caja de 43 pies completa, 19% abajo de la tarifa lineal.</div>`;
   if(S.cfgTab==="reglas") body=`<div class="row3">${inp("cg-o","Origen","origen",CFG.origen)}${inp("cg-m","Mínimo por embarque ($)","minimo",CFG.minimo,'type="number" data-num="1"')}${inp("cg-i","IVA (%)","iva",CFG.iva,'type="number" data-num="1"')}${inp("cg-v","Factor volumétrico (kg/m³)","volFactor",CFG.volFactor,'type="number" data-num="1"')}${inp("cg-g","Vigencia de tarifa","vigencia",CFG.vigencia)}${inp("cg-p","PIN de ALR (perfiles de la empresa)","pin",CFG.pin)}${inp("cg-dp","PIN de LANCER (acceso a Configuración)","devPin",CFG.devPin)}${inp("cg-q","Dirección base para los QR (vacío = la de esta página)","qrBase",CFG.qrBase||"",'placeholder="https://rlc-hash.github.io/LANCERALR/"')}</div>
+    <h3 style="margin:22px 0 10px">Seguro y recolección</h3><div class="row3">${inp("cg-sp","Seguro (% del valor declarado)","seguroPct",CFG.seguroPct,'type="number" step="0.1" data-num="1"')}${inp("cg-sc","Clave SAT del seguro (validar con contador)","seguroClave",CFG.seguroClave)}<label class="chk" style="margin-top:22px"><input type="checkbox" data-ch="cfgbool" data-arg="seguroIva" ${CFG.seguroIva?"checked":""}><span><b>El seguro lleva IVA</b></span></label>${inp("cg-cd","Recolecciones por día (capacidad)","recoleccion.capDia",CFG.recoleccion.capDia,'type="number" data-num="1"')}${inp("cg-an","Anticipación mínima (días hábiles)","recoleccion.anticipacion",CFG.recoleccion.anticipacion,'type="number" data-num="1"')}${inp("cg-mh","Ventana mínima (horas)","recoleccion.minHoras",CFG.recoleccion.minHoras,'type="number" data-num="1"')}<label class="chk" style="margin-top:22px"><input type="checkbox" data-ch="cfgbool" data-arg="recoleccion.sabado" ${CFG.recoleccion.sabado?"checked":""}><span><b>Recolectan los sábados</b></span></label></div>
     <div class="note sm" style="margin-top:16px">Factor 556 kg/m³ = inferido de “una tarima = 1,000 kg” ÷ 1.80 m³. <b>No es dato de ALR</b>: confirmar. Si la tarima mide 1.20 m de alto, sería 694. Combustible: no aplica.</div>`;
   if(S.cfgTab==="empresa") body=`<div class="row2">${inp("ce-r","Razón social","empresa.razon",E.razon)}${inp("ce-f","RFC emisor","empresa.rfc",E.rfc,'style="text-transform:uppercase"')}${inp("ce-g","Régimen fiscal (clave)","empresa.regimen",E.regimen)}${inp("ce-c","C.P. de expedición","empresa.cp",E.cp)}${inp("ce-d","Dirección","empresa.dir",E.dir)}${inp("ce-s","Serie de facturas","empresa.serie",E.serie)}${inp("ce-t","Teléfono","empresa.tel",E.tel)}${inp("ce-e","Correo","empresa.correo",E.correo)}</div>
     <div class="note sm" style="margin-top:16px">El RFC y la razón social de ejemplo se sustituyen por los reales de ALR. Para timbrar se necesita además el certificado de sello digital (CSD) y un PAC; eso se conecta en la fase de implementación.</div>`;
@@ -14054,11 +14125,12 @@ function siguientePaso(o){
 }
 function moverCajas(o, desde, hasta, k){ let m=0; for(let i=1;i<=o.sc.length&&m<k;i++) if(boxStage(o,i)===desde){ setBox(o,i,hasta); m++; } return m; }
 function addInc(o,tipo,detalle,extra){ (o.inc=o.inc||[]).push({tipo,detalle,extra:extra||0,at:Date.now(),por:ROLE?ROLES[ROLE].t:"Sistema"}); }
-function accRecibir(o,k,nota){
-  const pend=stageCounts(o)[0]; k=Math.min(k,pend); const m=moverCajas(o,0,1,k);
+function accRecibir(o,k,nota,nombre){
+  const pend=stageCounts(o)[0]; k=Math.min(k,pend); const m=moverCajas(o,0,1,k), n=o.sc.length;
   if(m<pend) addInc(o,"conteo",`Recepción parcial: llegaron ${m} de ${pend} cajas pendientes${nota?` · ${nota}`:""}`); else if(nota) addInc(o,"nota",nota);
-  o.history.push({k:o.status,at:Date.now(),note:`Recepción en almacén: ${m} de ${o.sc.length} cajas${nota?` · ${nota}`:""}`,by:ROLE?ROLES[ROLE].t:"Almacén"});
-  syncStatus(o); logEv("Operación","Recepción",`${o.folio} · ${m} cajas`); saveDB(); return m;
+  const rc=atLeast(o,1); o.conf=o.conf||{}; o.conf.recepcion={cajas:rc,de:n,por:ROLE?ROLES[ROLE].t:"Almacén",nombre:nombre||"",nota:nota||"",at:Date.now()};
+  o.history.push({k:o.status,at:Date.now(),note:`Almacén confirmó ${rc} de ${n} cajas${nombre?` (${nombre})`:""}${nota?` · ${nota}`:""}`,by:ROLE?ROLES[ROLE].t:"Almacén"});
+  syncStatus(o); logEv("Operación","Recepción confirmada",`${o.folio} · ${rc} de ${n} cajas`); saveDB(); return m;
 }
 function accCargar(o,k,viaId){
   const v=viaOf(viaId); if(!v) return 0; const m=moverCajas(o,1,2,k);
@@ -14072,12 +14144,18 @@ function accLlegar(o,k){
   logEv("Operación","Llegada a destino",`${o.folio} · ${m} cajas`); saveDB(); return m;
 }
 function accEntregar(o,d){
-  const c=stageCounts(o), sin=c[0]+c[1]+c[2];
-  for(let i=1;i<=o.sc.length;i++) setBox(o,i,5);
-  if(sin) addInc(o,"conteo",`Entrega registrada con ${sin} cajas sin registro previo de salida`);
-  o.pod={nombre:d.nombre,id:d.id||"",notas:d.notas||"",firma:d.firma||null,at:Date.now()};
-  bump(o,"entregado",`Entregado a ${d.nombre}${d.firma?" (con firma)":""}`);
-  logEv("Operación","Entrega con firma",`${o.folio} · ${d.nombre}`); saveDB();
+  const n=o.sc.length, c=stageCounts(o), disp=c[3]+c[4]; let k=Math.max(0,Math.min(d.cajas||disp,disp)), m=0;
+  for(const e of [4,3]) m+=moverCajas(o,e,5,k-m);
+  (o.entregas=o.entregas||[]).push({nombre:d.nombre,id:d.id||"",cajas:m,at:Date.now(),firma:d.firma||null});
+  const total=atLeast(o,5), por=ROLE?ROLES[ROLE].t:"Operador";
+  if(total<n){
+    addInc(o,"conteo",`Entrega parcial: ${d.nombre} recibió ${m} cajas; en total ${total} de ${n}, faltan ${n-total}`);
+    o.history.push({k:o.status,at:Date.now(),note:`Entrega parcial: ${d.nombre} confirmó ${m} cajas (${total} de ${n})`,by:por});
+    logEv("Operación","Entrega parcial",`${o.folio} · ${total} de ${n}`); saveDB(); return {parcial:true,m,total};
+  }
+  o.pod={nombre:d.nombre,id:d.id||"",notas:d.notas||"",firma:d.firma||null,cajas:n,de:n,at:Date.now()};
+  bump(o,"entregado",`Entregado a ${d.nombre}: confirmó ${n} de ${n} cajas${d.firma?" (con firma)":""}`);
+  logEv("Operación","Entrega con firma",`${o.folio} · ${d.nombre} · ${n} cajas`); saveDB(); return {parcial:false,m,total:n};
 }
 
 /* ---- hoja de acción ---- */
@@ -14085,7 +14163,7 @@ function declaradoHTML(o){
   return `<div class="note info sm" style="margin:10px 0"><b>Lo que declaró el cliente</b>${o.items.map(it=>`<div>${it.qty} × ${esc(itemName(it))} — ${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg c/u</div>`).join("")}</div>`;
 }
 function stepperHTML(max,val){
-  return `<label for="ac-k">¿Cuántas cajas?</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" data-act="kstep" data-arg="-1" aria-label="Menos">−</button><input id="ac-k" type="text" inputmode="numeric" autocomplete="off" value="${val}" data-max="${max}" style="text-align:center;font-size:26px;font-weight:800;max-width:130px"><button class="btn sec" data-act="kstep" data-arg="1" aria-label="Más">+</button><button class="btn sec sm" data-act="kall" data-arg="${max}">Todas (${max})</button></div>`;
+  return `<label for="ac-k">¿Cuántas cajas?</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sec" data-act="kstep" data-arg="-1" aria-label="Menos">−</button><input id="ac-k" type="text" inputmode="numeric" autocomplete="off" value="${val}" data-max="${max}" data-in="ack" style="text-align:center;font-size:26px;font-weight:800;max-width:130px"><button class="btn sec" data-act="kstep" data-arg="1" aria-label="Más">+</button><button class="btn sec sm" data-act="kall" data-arg="${max}">Todas (${max})</button></div>`;
 }
 function openAccion(folio, kind){
   const o=ordOf(folio); if(!o) return;
@@ -14103,7 +14181,8 @@ function openAccion(folio, kind){
   if(kind==="recibir"){
     const max=c[0];
     openModal({title:"Recibir cajas en almacén", key:"acc", wide:true, html:`${hd}${declaradoHTML(o)}${stepperHTML(max,max)}
-      <div style="margin-top:12px"><label for="ac-n">Nota (si faltan cajas, escribe qué pasó)</label><input id="ac-n" placeholder="Opcional"></div>
+      <div id="ac-sum" class="note sm" style="margin-top:10px" data-de="${o.sc.length}" data-ya="${o.sc.length-max}"></div>
+      <div class="row2" style="margin-top:12px"><div><label for="ac-p">Quién recibe en almacén</label><input id="ac-p" placeholder="Nombre (opcional)"></div><div><label for="ac-n">Nota (si faltan cajas, qué pasó)</label><input id="ac-n" placeholder="Opcional"></div></div>
       <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:700">Verificar medidas de una caja (opcional)</summary>
         <div class="sm mut" style="margin:8px 0">Mide una caja y compárala con lo declarado. Si excede, queda una incidencia y se estima el ajuste.</div>
         <div class="row2"><div><label for="mc-it">Tipo de caja</label><select id="mc-it">${o.items.map((it,i)=>`<option value="${i}">${esc(itemName(it))} — declarada ${it.l}×${it.a}×${it.h} cm · ${num(it.kg,1)} kg</option>`).join("")}</select></div><div></div></div>
@@ -14125,6 +14204,12 @@ function openAccion(folio, kind){
   }
   if(kind==="entregar"){ openSign(o.folio,"entrega"); return; }
 }
+function ackUpd(){
+  const k=$("#ac-k"), s=$("#ac-sum"); if(!k||!s) return;
+  const v=parseInt(k.value,10)||0, de=+s.dataset.de, ya=+s.dataset.ya, tot=ya+v;
+  s.className="note sm "+(tot===de?"ok":"");
+  s.innerHTML=`Vas a confirmar que recibiste <b>${v}</b> cajas${ya?` (más ${ya} ya recibidas)`:""}: <b>${tot} de ${de}</b>${tot===de?" ✓ completas":` · faltan ${de-tot}`}.`;
+}
 function guiaPendiente(folio){
   const o=ordOf(folio); if(!o){ toast("No encontré ese pedido","bad"); return; }
   S.view="sistema"; S.mod="oper"; S.drawer=null; render(); openAccion(folio);
@@ -14134,13 +14219,15 @@ function guiaPendiente(folio){
 let sgDrawing=false, sgDirty=false;
 function openSign(folio, kind){
   const o=ordOf(folio); if(!o) return; const ent=kind==="entrega";
+  const cc=stageCounts(o), disp=cc[3]+cc[4];
+  if(ent && disp===0){ toast("Todavía no hay cajas en destino. Registra primero la llegada.","bad"); return; }
   sgDirty=false;
   openModal({title:ent?"Entrega y firma":"Firma del remitente", key:"sign", wide:true,
     html:`<div class="sm mut" style="margin-bottom:8px"><b>${esc(o.folio)}</b> · ${esc(o.dst.nombre)} · ${o.totals.piezas} cajas</div>
       <div class="row2"><div><label for="sg-n">${ent?"Quién recibe":"Nombre de quien entrega"}</label><input id="sg-n" value="${esc(ent?"":o.sol.nombre)}" placeholder="Nombre completo"></div>${ent?`<div><label for="sg-i">Identificación (opcional)</label><input id="sg-i" placeholder="INE / folio"></div>`:`<div></div>`}</div>
       <div style="margin-top:10px"><label>Firma (dibuja con el dedo)</label><canvas id="sg-c" width="700" height="260" class="sgpad"></canvas>
       <div class="chips" style="margin-top:8px"><button class="btn sec sm" data-act="sgclear">Borrar firma</button></div></div>
-      ${ent?`<div style="margin-top:10px"><label for="sg-o">Notas (opcional)</label><input id="sg-o" placeholder="Ej. caja con golpe, recibió completo…"></div>`:""}`,
+      ${ent?`<div style="margin-top:10px"><label for="sg-k">Cajas que recibe el cliente</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input id="sg-k" inputmode="numeric" autocomplete="off" value="${disp}" data-max="${disp}" style="max-width:130px;font-size:24px;font-weight:800;text-align:center"><span class="sm mut">de ${o.sc.length} en total · ${disp} disponibles para entregar</span></div><div class="note sm" style="margin-top:8px">Al firmar, quien recibe confirma que contó ese número de cajas.</div></div><div style="margin-top:10px"><label for="sg-o">Notas (opcional)</label><input id="sg-o" placeholder="Ej. caja con golpe, recibió completo…"></div>`:""}`,
     actions:`<button class="btn ok" data-act="sgsave" data-arg="${esc(o.folio)}|${kind}">${ent?"Guardar entrega":"Guardar firma"}</button>`});
   initSignPad();
 }
@@ -14191,13 +14278,14 @@ function modOper(){
     ${S.scan.cam?`<div style="margin-top:12px"><video id="cam" class="cam" playsinline muted autoplay></video></div>`:""}
     <form data-form="guia" style="display:flex;gap:8px;margin-top:12px"><label for="gi" style="display:none">Folio</label><input id="gi" placeholder="Escribe el folio, ej. ALR-2026-0003" autocomplete="off" autocapitalize="characters"><button class="btn sec">Abrir</button></form></div>
   ${por&&allowed("pedidos")?`<div class="note sm" style="margin-top:12px">Hay <b>${por}</b> pedido(s) nuevos por confirmar en <a href="#" data-act="mod" data-arg="pedidos" style="color:var(--c1);font-weight:700">Pedidos</a>.</div>`:""}
+  ${recHoyHTML()}
   <div class="opchips">${[["todos","Todos",items.length],...kinds.map(([k,t])=>[k,t,cnt(k)])].map(([k,t,n])=>`<button class="${F===k?"on":""}" data-act="operf" data-arg="${k}">${t}<b>${n}</b></button>`).join("")}</div>
   <div class="oplist">${lista.map(({o,p})=>{ const e=eta(o.dest,o.createdAt);
     return `<div class="opc"><div class="opc-h"><b>${esc(o.folio)}</b>${o.practice?` <span class="pill dark">práctica</span>`:""}${atrasado(o)?` <span class="pill bad">atrasado</span>`:""}<span class="mut sm" style="margin-left:auto">${esc(dest(o.dest).name)}</span></div>
       <div class="sm">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(o.dst.nombre)}</div>
       <div class="xs mut" style="margin:4px 0 8px">${o.totals.piezas} cajas · ${num(o.totals.m3,1)} m³ · ${num(o.totals.kg,0)} kg${e?` · llega ${esc(etaText(e))}`:""}</div>
       ${boxProgress(o,false)}
-      <div class="opc-b"><button class="btn big" data-act="accion" data-arg="${esc(o.folio)}|${p.k}">${esc(p.t)}</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío</button></div></div>`; }).join("")||`<div class="card mut c" style="padding:28px">No hay pedidos en esta lista.</div>`}</div>
+      <div class="opc-b"><button class="btn big" data-act="accion" data-arg="${esc(o.folio)}|${p.k}">${esc(p.t)}</button><button class="btn sec" data-act="open" data-arg="${esc(o.folio)}">Ver envío</button><button class="btn ghost sm" data-act="corregir" data-arg="${esc(o.folio)}">Corregir conteo</button></div></div>`; }).join("")||`<div class="card mut c" style="padding:28px">No hay pedidos en esta lista.</div>`}</div>
   <h3 style="margin:24px 0 10px">Unidades de hoy</h3>${unidadesHoyHTML()}`;
 }
 
@@ -14208,7 +14296,7 @@ function crearPractica(){
   const mk=id=>{ const k=CFG.cajas.find(x=>x.id===id)||CFG.cajas[0]; return {cajaId:k.id,l:k.l,a:k.a,h:k.h,kg:k.kg}; };
   const d=CFG.destinos.find(x=>!x.ocurre)||CFG.destinos[0];
   const items=[{...mk(CFG.cajas[0].id),qty:8},{...mk((CFG.cajas[1]||CFG.cajas[0]).id),qty:4}];
-  const o={folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:d.id, items, sol:{nombre:c.nombre,empresa:c.razon,correo:c.correo,tel:c.tel}, dst:{nombre:"Bodega de práctica",dir:"Av. de práctica 100, "+d.name,tel:"5555555556"}, serv:{recoleccion:false,entrega:false,seguro:false}, obs:"PEDIDO DE PRÁCTICA", guia:"", cancelado:false, status:"solicitado", cli:c.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{}, practice:true, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido de práctica",by:"Sistema"}]};
+  const o={folio:`ALR-${new Date().getFullYear()}-${pad(nextSeq("ord",1))}`, createdAt:Date.now(), dest:d.id, items, sol:{nombre:c.nombre,empresa:c.razon,correo:c.correo,tel:c.tel}, dst:{nombre:"Bodega de práctica",dir:"Av. de práctica 100, "+d.name,tel:"5555555556"}, serv:{recoleccion:false,entrega:false,seguro:false}, obs:"PEDIDO DE PRÁCTICA", guia:"", cancelado:false, status:"solicitado", cli:c.id, rem:null, fac:[], pod:null, inc:[], firmas:{}, notif:{}, practice:true, rec:{on:false}, seguro:{on:false,valor:0}, pr:{}, history:[{k:"solicitado",at:Date.now(),note:"Pedido de práctica",by:"Sistema"}]};
   o.totals=calc(o.dest,items); o.sc="0".repeat(o.totals.piezas);
   DB.ord.unshift(o); logEv("Práctica","Pedido de práctica creado",o.folio); saveDB(); return o;
 }
@@ -14236,12 +14324,226 @@ function modPractica(){
     ${sig<0?`<div class="note ok" style="margin-top:12px">¡Práctica completa! Ya recorriste todo el proceso.</div>`:""}</div>`; }).join("")||`<div class="card c" style="padding:30px"><p class="mut">Todavía no hay pedidos de práctica.</p><button class="btn" data-act="newpractice">Crear pedido de práctica</button></div>`}`;
 }
 
+/* ---- corregir conteo ---- */
+function resyncDown(o){
+  if(o.cancelado) return;
+  const c=stageCounts(o), min=Math.min(...c.map((v,i)=>v?i:9));
+  const key = min>=5?"entregado":min>=4?"almacen_destino":min>=3?"transito":min>=1?"almacen_origen":(o.rec&&o.rec.estado==="recolectada"?"recolectado":"confirmado");
+  if(stKey(key)>=1 && stKey(key)<stIdx(o)) advance(o,key,"Estatus ajustado por corrección de conteo");
+}
+function ajustarEtapa(o,i,k,motivo){
+  const n=o.sc.length, cur=atLeast(o,i); k=Math.max(0,Math.min(n,k)); if(k===cur) return {ok:true,m:0};
+  if(k>cur){
+    const need=k-cur, avail=stageCounts(o)[i-1];
+    if(need>avail) return {ok:false,msg:`Solo hay ${avail} cajas disponibles en el paso anterior`};
+    if(i===2){ const v=o.viaje&&viaOf(o.viaje); if(!v||!["abierto","cargando"].includes(v.status)) return {ok:false,msg:"Asigna primero el pedido a una unidad abierta (usa Cargar al camión)"}; }
+    moverCajas(o,i-1,i,need);
+  } else {
+    const need=cur-k, exact=stageCounts(o)[i];
+    if(need>exact) return {ok:false,msg:`${cur-exact} cajas ya avanzaron al paso siguiente; corrige ese paso primero`};
+    let m=0; for(let j=n;j>=1&&m<need;j--) if(boxStage(o,j)===i){ setBox(o,j,i-1); m++; }
+  }
+  const por=ROLE?ROLES[ROLE].t:"Sistema";
+  addInc(o,"conteo",`Conteo corregido (${STAGES[i-1].t}): de ${cur} a ${k} de ${n} cajas${motivo?` · ${motivo}`:""}`);
+  o.history.push({k:o.status,at:Date.now(),note:`Conteo corregido: ${STAGES[i-1].t} ${cur} → ${k} de ${n}${motivo?` (${motivo})`:""}`,by:por});
+  if(i===1){ o.conf=o.conf||{}; o.conf.recepcion={...(o.conf.recepcion||{}),cajas:k,de:n,por,at:Date.now(),nota:motivo||""}; }
+  resyncDown(o); syncStatus(o); logEv("Operación","Conteo corregido",`${o.folio} · ${STAGES[i-1].t}: ${cur} → ${k}`); saveDB(); return {ok:true,m:Math.abs(k-cur)};
+}
+function openCorregir(f){
+  const o=ordOf(f); if(!o) return; const n=o.sc.length, v={1:atLeast(o,1),2:atLeast(o,2),4:atLeast(o,4)};
+  const row=(i,l)=>`<div class="row2" style="align-items:end;margin-bottom:10px"><div><label for="cj-${i}">${l}</label><input id="cj-${i}" inputmode="numeric" autocomplete="off" value="${v[i]}" data-cur="${v[i]}" style="font-size:22px;font-weight:800;text-align:center"></div><div class="sm mut">de ${n} cajas (ahora ${v[i]})</div></div>`;
+  openModal({title:"Corregir conteo", key:"corr", html:`<div style="margin-bottom:8px"><b style="font-size:18px">${esc(o.folio)}</b> ${badge(o)}<div class="sm mut">${esc(o.sol.empresa||o.sol.nombre)} → ${esc(dest(o.dest).name)} · ${n} cajas</div></div>
+    <div class="note info sm" style="margin-bottom:12px">Si contaron de más o de menos, corrige el número. Queda en el historial con tu motivo.</div>
+    ${row(1,"Cajas recibidas en almacén")}${row(2,"Cajas cargadas al camión")}${row(4,"Cajas llegadas a destino")}
+    <label for="cj-m">Motivo *</label><input id="cj-m" placeholder="Ej. Se contaron mal, 2 cajas dañadas, faltó una tarima">`,
+    actions:`<button class="btn" data-act="corrapply" data-arg="${esc(f)}">Guardar corrección</button>`});
+}
+
+/* ==================== Recolecciones: calendario y solicitudes ==================== */
+function ymd(d){ const x=new Date(d); return x.getFullYear()+"-"+pad(x.getMonth()+1,2)+"-"+pad(x.getDate(),2); }
+function fromYmd(s){ const [y,m,d]=String(s).split("-").map(Number); return new Date(y,m-1,d); }
+function hh(s){ return parseInt(String(s).slice(0,2),10); }
+const REC_ST = {solicitada:"Por confirmar", programada:"Programada", recolectada:"Recolectada", no_realizada:"No se pudo", cancelada:"Cancelada"};
+function recVentana(r){ return `${r.desde}–${r.hasta}`; }
+function recVigente(o){ return !!(o.rec && o.rec.on && o.rec.estado!=="cancelada"); }
+
+function recCount(fecha){ return DB.ord.filter(o=>!o.cancelado && recVigente(o) && o.rec.fecha===fecha).length; }
+function diaInfo(fecha){
+  const R=CFG.recoleccion, w=fromYmd(fecha).getDay(), bloq=(DB.cal.bloq||{})[fecha];
+  if(w===0 || (w===6&&!R.sabado)) return {ok:false, why:"Sin servicio", n:0};
+  if(bloq!==undefined) return {ok:false, why:bloq||"Bloqueado", bloq:true, n:recCount(fecha)};
+  const n=recCount(fecha); if(n>=R.capDia) return {ok:false, why:"Lleno", n};
+  return {ok:true, n};
+}
+const primerDiaRec = () => ymd(addBiz(Date.now(), CFG.recoleccion.anticipacion));
+function recValida(r){
+  const m=[], R=CFG.recoleccion;
+  if(!r.dir.trim()) m.push("dirección de recolección");
+  if(!r.contacto.nombre.trim()) m.push("contacto en sitio");
+  if(r.contacto.tel.replace(/\D/g,"").length<8) m.push("teléfono del contacto");
+  if(!r.fecha) m.push("día de recolección"); else if(!diaInfo(r.fecha).ok || r.fecha<primerDiaRec()) m.push("un día disponible");
+  if(hh(r.hasta)-hh(r.desde)<R.minHoras) m.push(`ventana de al menos ${R.minHoras} horas`);
+  return m;
+}
+function horaOpts(desdeN, hastaN, sel){ let h=""; for(let i=desdeN;i<=hastaN;i++){ const v=pad(i,2)+":00"; h+=`<option value="${v}" ${v===sel?"selected":""}>${v}</option>`; } return h; }
+function diasChipsHTML(sel, act){
+  let d=fromYmd(primerDiaRec()), out="";
+  for(let i=0;i<14;i++){ const f=ymd(d), info=diaInfo(f);
+    out+=`<button type="button" class="dchip ${sel===f?"on":""}" ${info.ok?"":"disabled"} data-act="${act}" data-arg="${f}"><b>${esc(fshort(d))}</b><small>${info.ok?"Disponible":esc(info.why)}</small></button>`;
+    d=new Date(d.getTime()+DAY); }
+  return `<div class="dchips">${out}</div>`;
+}
+function ventanaHTML(prefix, r, chAct){
+  const R=CFG.recoleccion, dur=hh(r.hasta)-hh(r.desde), ok=dur>=R.minHoras;
+  const presets=[["09:00","12:00","Mañana"],["12:00","15:00","Mediodía"],["14:00","17:00","Tarde"],["09:00","18:00","Todo el día"]].filter(p=>hh(p[0])>=R.desde&&hh(p[1])<=R.hasta);
+  return `<div class="chips" style="margin-bottom:8px">${presets.map(p=>`<button type="button" class="btn sec sm" data-act="${chAct}p" data-arg="${p[0]}|${p[1]}">${p[2]} ${p[0]}–${p[1]}</button>`).join("")}</div>
+    <div class="row2"><div><label for="${prefix}-d">Desde</label><select id="${prefix}-d" data-ch="${chAct}d">${horaOpts(R.desde,R.hasta-R.minHoras,r.desde)}</select></div>
+    <div><label for="${prefix}-h">Hasta</label><select id="${prefix}-h" data-ch="${chAct}h">${horaOpts(hh(r.desde)+R.minHoras,R.hasta,r.hasta)}</select></div></div>
+    <div class="sm ${ok?"mut":""}" style="margin-top:6px;${ok?"":"color:var(--bad);font-weight:700"}">Ventana de ${dur} h. Mínimo ${R.minHoras} horas: es el margen para que la unidad llegue aunque se retrase.</div>`;
+}
+function ajustaVentana(r, campo, valor){
+  const R=CFG.recoleccion; r[campo]=valor;
+  if(hh(r.hasta)-hh(r.desde)<R.minHoras){ if(campo==="desde") r.hasta=pad(Math.min(R.hasta,hh(r.desde)+R.minHoras),2)+":00"; else r.desde=pad(Math.max(R.desde,hh(r.hasta)-R.minHoras),2)+":00"; }
+}
+
+/* ---- Cliente: tarjeta de recolección y seguro dentro del cotizador ---- */
+function renderRec(){
+  const el=$("#q-rec"); if(!el) return;
+  if(!Q.serv.recoleccion){ el.innerHTML=""; return; }
+  const r=Q.rec;
+  el.innerHTML=`<div class="card"><div class="h2">Datos de tu recolección</div>
+    <div class="row2">
+      <div style="grid-column:1/-1"><label for="r-dir">Dirección donde recogemos *</label><input id="r-dir" data-in="rec" data-arg="dir" value="${esc(r.dir)}" placeholder="Calle, número, colonia, ciudad, C.P."></div>
+      <div><label for="r-cn">Contacto en sitio *</label><input id="r-cn" data-in="rec" data-arg="cn" value="${esc(r.contacto.nombre)}" placeholder="Quién nos recibe"></div>
+      <div><label for="r-ct">Teléfono del contacto *</label><input id="r-ct" type="tel" data-in="rec" data-arg="ct" value="${esc(r.contacto.tel)}"></div>
+      <div style="grid-column:1/-1"><label for="r-pr">A quién preguntar o a dónde ir</label><input id="r-pr" data-in="rec" data-arg="pr" value="${esc(r.pregunta)}" placeholder="Ej. Con el jefe de almacén, andén 3, caseta de vigilancia"></div>
+    </div>
+    <div style="margin-top:14px"><label>Día de recolección *</label>${diasChipsHTML(r.fecha,"qdia")}<div class="xs mut" style="margin-top:6px">Los días llenos o sin servicio aparecen apagados.</div></div>
+    <div style="margin-top:14px"><label>Horario en que estarás listo *</label>${ventanaHTML("r",r,"rec")}</div>
+    <div style="margin-top:14px"><label for="r-in">Instrucciones para el operador</label><textarea id="r-in" rows="2" data-in="rec" data-arg="instr" placeholder="Acceso, piso, horario de comida, identificación que piden…">${esc(r.instr)}</textarea></div></div>`;
+}
+function renderSeg(){
+  const el=$("#q-seg"); if(!el) return;
+  if(!Q.serv.seguro){ el.innerHTML=""; return; }
+  const v=parseFloat(Q.seguro.valor)||0, s=v*CFG.seguroPct/100;
+  el.innerHTML=`<div class="card flat" style="margin-top:10px;background:var(--soft)"><div class="sm" style="margin-bottom:10px">Seguro de mercancía: <b>${CFG.seguroPct}%</b> sobre el valor declarado. Usa el subtotal de tu factura de la mercancía (sin IVA).</div>
+    <div class="row2"><div><label for="sg-v">Valor declarado de la mercancía ($) *</label><input id="sg-v" inputmode="decimal" autocomplete="off" data-in="segv" value="${Q.seguro.valor||""}" placeholder="Ej. 85000"></div>
+    <div><label for="sg-f">Sube tu factura de la mercancía (PDF, XML o imagen)</label><input id="sg-f" type="file" accept=".pdf,.xml,image/*" data-ch="segfile"></div></div>
+    <div id="sg-res" class="sm" style="margin-top:8px">${v>0?`Costo del seguro: <b>${money(s)}</b> + IVA`:"Captura el valor para calcular el seguro."}${Q.seguro.file?` · <b>${esc(Q.seguro.file.name)}</b> adjunta`:""}</div></div>`;
+}
+function recResumen(o){
+  if(!recVigente(o)) return "";
+  const r=o.rec, st={solicitada:"warn",programada:"ok",recolectada:"ok",no_realizada:"bad"}[r.estado]||"";
+  return `<div class="note info sm" style="text-align:left"><b>Recolección:</b> ${esc(fshort(fromYmd(r.fecha)))} · ${esc(recVentana(r))} <span class="pill ${st}">${esc(REC_ST[r.estado])}</span>${r.unidad?` · ${esc(r.unidad)}`:""}<br>${esc(r.dir)}<br>Contacto: ${esc(r.contacto.nombre)} · ${esc(r.contacto.tel)}${r.pregunta?`<br>Preguntar por: ${esc(r.pregunta)}`:""}${r.instr?`<br>Instrucciones: ${esc(r.instr)}`:""}</div>`;
+}
+
+/* ---- Repetir un pedido anterior ---- */
+function cargarComoBase(o){
+  Q=newQ(); Q.dest=o.dest;
+  Q.items=o.items.map(it=>it.custom?{custom:true,qty:it.qty,l:it.l,a:it.a,h:it.h,kg:it.kg}:{cajaId:it.cajaId,qty:it.qty});
+  Q.sol={...o.sol}; Q.dst={...o.dst}; Q.serv={...o.serv}; Q.obs=o.obs||""; Q.notif={wa:false,mail:false,...(o.notif||{})};
+  if(o.rec&&o.rec.on){ Q.serv.recoleccion=true; Q.rec={...Q.rec,dir:o.rec.dir,contacto:{...o.rec.contacto},pregunta:o.rec.pregunta||"",instr:o.rec.instr||"",desde:o.rec.desde,hasta:o.rec.hasta,fecha:""}; }
+  if(o.seguro&&o.seguro.on){ Q.serv.seguro=true; Q.seguro={valor:o.seguro.valor,file:null}; }
+  Q.base=o.folio;
+}
+function repetirPedido(folio){
+  const o=ordOf(folio); if(!o){ toast("No encontré ese pedido","bad"); return; }
+  cargarComoBase(o); S.view="cotizar"; S.done=null; S.drawer=null; S.modals=[]; render(); scrollTo(0,0);
+  toast(`Copiamos ${o.folio}. Cambia lo que necesites y confirma.`);
+}
+
+/* ==================== Módulo Recolecciones (interno) ==================== */
+function recCard(o){
+  const r=o.rec, st={solicitada:"warn",programada:"ok",recolectada:"ok",no_realizada:"bad",cancelada:"bad"}[r.estado]||"";
+  const maps=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.dir)}`;
+  const acts=[];
+  if(r.estado==="solicitada") acts.push(`<button class="btn sm" data-act="recconf" data-arg="${esc(o.folio)}">Confirmar</button>`);
+  if(r.estado==="programada") acts.push(`<button class="btn ok sm" data-act="recdone" data-arg="${esc(o.folio)}">Marcar recolectada</button><button class="btn sec sm" data-act="recfail" data-arg="${esc(o.folio)}">No se pudo</button>`);
+  if(["solicitada","programada","no_realizada"].includes(r.estado)) acts.push(`<button class="btn sec sm" data-act="recre" data-arg="${esc(o.folio)}">Reprogramar</button>`);
+  return `<div class="opc" style="margin-bottom:10px"><div class="opc-h"><b>${esc(r.desde)}–${esc(r.hasta)}</b><span class="pill ${st}">${esc(REC_ST[r.estado])}</span><span class="mut sm" style="margin-left:auto">${esc(o.folio)}</span></div>
+    <div class="sm" style="margin-top:4px"><b>${esc(o.sol.empresa||o.sol.nombre)}</b> · ${o.totals.piezas} cajas · ${num(o.totals.m3,1)} m³ · ${num(o.totals.kg,0)} kg → ${esc(dest(o.dest).name)}</div>
+    <div class="sm" style="margin-top:6px">📍 <a href="${esc(maps)}" target="_blank" rel="noopener" style="color:var(--c2)">${esc(r.dir)}</a></div>
+    <div class="sm">Contacto: <b>${esc(r.contacto.nombre)}</b> · ${esc(r.contacto.tel)}${r.pregunta?`<br>Preguntar por: <b>${esc(r.pregunta)}</b>`:""}${r.instr?`<br>Instrucciones: ${esc(r.instr)}`:""}${r.unidad?`<br>Unidad: <b>${esc(r.unidad)}</b>`:""}${r.nota?`<br><span class="mut">${esc(r.nota)}</span>`:""}</div>
+    <div class="opc-b noprint">${acts.join("")}<button class="btn sec sm" data-act="open" data-arg="${esc(o.folio)}">Ver pedido</button></div></div>`;
+}
+function calCell(f,hoy){
+  const info=diaInfo(f), n=recCount(f), cap=CFG.recoleccion.capDia, past=f<hoy;
+  const cls=past?"past":info.bloq?"blk":info.why==="Sin servicio"?"off":n>=cap?"full":n/cap>.6?"hi":"";
+  return `<button class="cc ${cls} ${S.recDia===f?"sel":""} ${f===hoy?"today":""}" data-act="calsel" data-arg="${f}"><b>${+f.slice(8)}</b>${info.bloq?`<span>Bloq.</span>`:n?`<span>${n}/${cap}</span>`:""}<i style="width:${Math.min(100,n/cap*100)}%"></i></button>`;
+}
+function modReco(){
+  const hoy=ymd(Date.now()), R=CFG.recoleccion;
+  if(!S.recDia){ const ds=DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&o.rec.fecha>=hoy&&["solicitada","programada"].includes(o.rec.estado)).map(o=>o.rec.fecha).sort(); S.recDia=ds[0]||hoy; if(ds[0]){ const d0=fromYmd(ds[0]); S.recRef={y:d0.getFullYear(),m:d0.getMonth()}; } }
+  if(!S.recRef) S.recRef={y:new Date().getFullYear(),m:new Date().getMonth()};
+  const ref=S.recRef, first=new Date(ref.y,ref.m,1), dim=new Date(ref.y,ref.m+1,0).getDate(), off=(first.getDay()+6)%7;
+  const cells=[]; for(let i=0;i<off;i++) cells.push(null); for(let d=1;d<=dim;d++) cells.push(ymd(new Date(ref.y,ref.m,d)));
+  const mes=first.toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+  const todas=DB.ord.filter(o=>!o.cancelado&&recVigente(o));
+  const pend=todas.filter(o=>o.rec.estado==="solicitada").sort((a,b)=>a.rec.fecha.localeCompare(b.rec.fecha)||a.rec.desde.localeCompare(b.rec.desde));
+  const dia=todas.filter(o=>o.rec.fecha===S.recDia).sort((a,b)=>a.rec.desde.localeCompare(b.rec.desde));
+  const info=diaInfo(S.recDia), m3=dia.reduce((s,o)=>s+o.totals.m3,0);
+  return `${ptitle("Recolecciones",`<span class="mut sm">Capacidad: ${R.capDia} recolecciones por día</span>`)}
+  ${pend.length?`<div class="card" style="border:2px solid #e0a21b;margin-bottom:16px"><div class="h2">Solicitudes por confirmar <span class="pill warn">${pend.length}</span></div>${pend.map(o=>`<div class="mut xs" style="margin:6px 0 2px">${esc(fshort(fromYmd(o.rec.fecha)))}</div>${recCard(o)}`).join("")}</div>`:`<div class="note ok sm" style="margin-bottom:16px">No hay solicitudes pendientes de confirmar.</div>`}
+  <div class="grid g2" style="align-items:start">
+    <div class="card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><button class="btn sec sm" data-act="calmes" data-arg="-1" aria-label="Mes anterior">‹</button><h3 style="flex:1;text-align:center">${esc(mes.charAt(0).toUpperCase()+mes.slice(1))}</h3><button class="btn sec sm" data-act="calmes" data-arg="1" aria-label="Mes siguiente">›</button></div>
+      <div class="cal">${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(h=>`<div class="ch">${h}</div>`).join("")}${cells.map(f=>f?calCell(f,hoy):`<div class="cc empty"></div>`).join("")}</div>
+      <div class="legend" style="margin-top:10px"><span><i style="background:#d6efe0"></i>Con lugar</span><span><i style="background:#fde9b8"></i>Casi lleno</span><span><i style="background:#f9c9c9"></i>Lleno</span><span><i style="background:#cfd5e2"></i>Bloqueado / sin servicio</span></div></div>
+    <div class="card"><div class="h2">${esc(fshort(fromYmd(S.recDia)))} <span class="pill ${info.ok?"ok":info.bloq?"dark":"bad"}">${info.ok?"Con lugar":esc(info.why)}</span></div>
+      <div class="sm mut" style="margin-bottom:10px">${dia.length} de ${R.capDia} recolecciones · ${num(m3,1)} m³</div>
+      ${dia.map(recCard).join("")||`<div class="mut sm">Sin recolecciones este día.</div>`}
+      ${allowed("config")||ROLE==="admin"||ROLE==="almacen"?`<div class="noprint" style="margin-top:12px">${info.bloq?`<button class="btn sec sm" data-act="calopen" data-arg="${S.recDia}">Abrir este día</button>`:`<div class="row2"><div><label for="rb-m">Bloquear este día (motivo)</label><input id="rb-m" placeholder="Mantenimiento, festivo, sin unidades…"></div><div style="align-self:end"><button class="btn sec sm" data-act="calblock" data-arg="${S.recDia}">Bloquear día</button></div></div>`}</div>`:""}</div>
+  </div>`;
+}
+function recHoyHTML(){
+  const hoy=ymd(Date.now());
+  const l=DB.ord.filter(o=>!o.cancelado&&recVigente(o)&&["solicitada","programada"].includes(o.rec.estado)&&o.rec.fecha<=hoy).sort((a,b)=>a.rec.fecha.localeCompare(b.rec.fecha)||a.rec.desde.localeCompare(b.rec.desde));
+  if(!l.length) return "";
+  return `<h3 style="margin:20px 0 10px">Recolecciones de hoy <span class="pill red">${l.length}</span></h3>${l.map(recCard).join("")}`;
+}
+
+/* ---- ventanas modales ---- */
+function openRecConfirm(f){
+  const o=ordOf(f), r=o.rec, unidades=[...new Set(["Camioneta 1","Camioneta 2","Rabón 3",...DB.via.map(v=>v.unidad)])];
+  openModal({title:"Confirmar recolección", key:"rec", html:`<div class="sm" style="margin-bottom:10px"><b>${esc(o.folio)}</b> · ${esc(fshort(fromYmd(r.fecha)))} · ${esc(recVentana(r))}<br>${esc(r.dir)}</div>
+    <label for="rc-u">Unidad que recoge</label><input id="rc-u" list="rc-ul" placeholder="Ej. Camioneta 1"><datalist id="rc-ul">${unidades.map(u=>`<option value="${esc(u)}">`).join("")}</datalist>
+    <div style="margin-top:10px"><label for="rc-n">Nota para el cliente (opcional)</label><input id="rc-n" placeholder="Ej. Llegamos entre 10:00 y 11:00"></div>`,
+    actions:`<button class="btn" data-act="recconf2" data-arg="${esc(f)}">Confirmar recolección</button>`});
+}
+function openRecResched(f, keep){
+  const o=ordOf(f), r=o.rec; if(!keep) S.rs={folio:f,fecha:"",desde:r.desde,hasta:r.hasta};
+  else S.modals.pop();
+  const s=S.rs;
+  openModal({title:"Reprogramar recolección", key:"rec", wide:true, html:`<div class="sm" style="margin-bottom:10px"><b>${esc(o.folio)}</b> · ${esc(o.sol.empresa||o.sol.nombre)} · ahora: ${esc(fshort(fromYmd(r.fecha)))} ${esc(recVentana(r))}</div>
+    <label>Nuevo día</label>${diasChipsHTML(s.fecha,"rsdia")}<div style="margin-top:12px"><label>Horario</label>${ventanaHTML("rs",s,"rs")}</div>`,
+    actions:`<button class="btn" data-act="recre2" data-arg="${esc(f)}">Guardar nuevo horario</button>`});
+}
+function openSeguroEdit(f){
+  const o=ordOf(f), sg=o.seguro||{on:false,valor:0};
+  openModal({title:"Seguro de la mercancía", key:"seg", html:`<div class="sm" style="margin-bottom:10px"><b>${esc(o.folio)}</b> · cobro de <b>${CFG.seguroPct}%</b> sobre el valor declarado.</div>
+    <label for="se-v">Valor declarado de la mercancía ($, sin IVA)</label><input id="se-v" inputmode="decimal" value="${sg.valor||""}" placeholder="0 para quitar el seguro">
+    <div style="margin-top:10px"><label for="se-f">Factura de la mercancía (PDF, XML o imagen)</label><input id="se-f" type="file" accept=".pdf,.xml,image/*" data-ch="segfile2">${sg.file?`<div class="xs mut" style="margin-top:4px">Actual: ${esc(sg.file.name)}</div>`:""}</div>
+    ${(o.fac||[]).length?`<div class="note sm" style="margin-top:10px">Este pedido ya tiene factura. Al cambiar el seguro, crea una nueva factura o cancela y vuelve a generar la actual.</div>`:""}`,
+    actions:`<button class="btn" data-act="seguro2" data-arg="${esc(f)}">Guardar seguro</button>`});
+}
+function dataUrlBlob(u){ const [h,b]=u.split(","), m=(h.match(/:(.*?);/)||[])[1]||"application/octet-stream", bin=atob(b), a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:m}); }
+function leerArchivo(file, cb){
+  if(!file) return; if(file.size>900*1024){ toast("El archivo pesa más de 900 KB. Comprímelo o mándalo por correo.","bad"); return; }
+  const r=new FileReader(); r.onload=()=>cb({name:file.name,type:file.type,size:file.size,data:r.result}); r.readAsDataURL(file);
+}
+
+function repeatCardHTML(){
+  if(Q.base) return `<div class="note info" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between"><span>Repitiendo <b>${esc(Q.base)}</b>. Cambia lo que necesites y confirma.</span><button class="btn sec sm" data-act="newquote">Empezar de cero</button></div>`;
+  const mis=(store.get("alr_mis_v1")||[]).filter(f=>ordOf(f)).slice(0,10);
+  return `<div class="card" style="margin-bottom:16px"><div class="h2">¿Ya enviaste antes? Repite un pedido</div><div class="row2"><div><label for="rep-s">Tus pedidos en este dispositivo</label><select id="rep-s"><option value="">— elige —</option>${mis.map(f=>{ const o=ordOf(f); return `<option value="${esc(f)}">${esc(f)} · ${o.totals.piezas} cajas → ${esc(dest(o.dest).name)}</option>`; }).join("")}</select></div><div><label for="rep-f">O escribe un folio</label><input id="rep-f" placeholder="Ej. ALR-2026-0005" autocapitalize="characters" autocomplete="off"></div></div><button class="btn sec sm" style="margin-top:10px" data-act="repsel">Usar como base y modificar</button></div>`;
+}
+function segRes(){ const r=$("#sg-res"); if(!r) return; const v=parseFloat(Q.seguro.valor)||0; r.innerHTML=`${v>0?`Costo del seguro: <b>${money(v*CFG.seguroPct/100)}</b> + IVA`:"Captura el valor para calcular el seguro."}${Q.seguro.file?` · <b>${esc(Q.seguro.file.name)}</b> adjunta`:""}`; }
+
 /* ==================== Render y acciones ==================== */
 function render(){
   applyBrand(); document.body.dataset.view=S.view;
   const v = {cotizar:viewCotizar, rastreo:viewRastreo, sistema:viewSistema, etiquetas:viewEtiquetas}[S.view] || viewCotizar;
   $("#app").innerHTML = v();
-  if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); }
+  if(S.view==="cotizar" && !S.done){ renderPieces(); renderSummary(); renderOcurre(); renderRec(); renderSeg(); }
   renderOverlay(); attachCam();
   $$("table.rt").forEach(t=>{ const hs=[...t.querySelectorAll("thead th")].map(h=>h.textContent.trim()); t.querySelectorAll("tbody tr").forEach(tr=>[...tr.children].forEach((td,i)=>{ if(hs[i]) td.setAttribute("data-label",hs[i]); })); });
   if(S.view==="sistema" && S.mod==="scan" && ROLE){ const i=$("#scan-in"); if(i && !S.noFocus) i.focus(); }
@@ -14284,11 +14586,20 @@ const ACT = {
   /* operación sencilla por pedido */
   accion(arg){ const [f,k]=arg.split("|"); openAccion(f,k); },
   confirmord2(f){ const o=ordOf(f); confirmOrder(o); closeModal(); render(); toast(`Confirmado · guía ${o.guia}`); },
-  kstep(d){ const i=$("#ac-k"); if(!i) return; const max=+i.dataset.max||0; i.value=Math.max(0,Math.min(max,(parseInt(i.value,10)||0)+(+d))); },
-  kall(m){ const i=$("#ac-k"); if(i) i.value=m; },
+  kstep(d){ const i=$("#ac-k"); if(!i) return; const max=+i.dataset.max||0; i.value=Math.max(0,Math.min(max,(parseInt(i.value,10)||0)+(+d))); ackUpd(); },
+  kall(m){ const i=$("#ac-k"); if(i) i.value=m; ackUpd(); },
+  corregir(f){ openCorregir(f); },
+  corrapply(f){ const o=ordOf(f), motivo=($("#cj-m")||{}).value.trim(), rows=[1,2,4].map(i=>({i,cur:+$("#cj-"+i).dataset.cur,v:parseInt($("#cj-"+i).value,10)}));
+    if(rows.some(r=>isNaN(r.v)||r.v<0||r.v>o.sc.length)){ toast(`Los números deben estar entre 0 y ${o.sc.length}`,"bad"); return; }
+    const ch=rows.filter(r=>r.v!==r.cur); if(!ch.length){ toast("No cambiaste ningún número"); return; } if(!motivo){ toast("Escribe el motivo de la corrección","bad"); return; }
+    const dec=ch.filter(r=>r.v<r.cur).sort((a,b)=>b.i-a.i), inc=ch.filter(r=>r.v>r.cur).sort((a,b)=>a.i-b.i);
+    for(const r of [...dec,...inc]){ const res=ajustarEtapa(o,r.i,r.v,motivo); if(!res.ok){ toast(res.msg,"bad"); render(); return; } }
+    closeModal(); render(); toast("Conteo corregido y registrado"); },
+  adjapply(arg){ const [f,i]=arg.split("|"), o=ordOf(f), k=parseInt(($("#adj-k")||{}).value,10); if(isNaN(k)){ toast("Escribe un número","bad"); return; }
+    const res=ajustarEtapa(o,+i,k,"ajuste manual en el escáner"); if(!res.ok){ toast(res.msg,"bad"); return; } S.scan.ord=f; refreshScan(); toast(res.m?"Conteo guardado":"Sin cambios"); },
   dorecibir(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0;
     if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
-    const m=accRecibir(o,k,($("#ac-n")||{}).value.trim()); closeModal(); render(); toast(m<max?`${m} de ${max} cajas recibidas (queda incidencia)`:`${m} cajas recibidas ✓`); },
+    const m=accRecibir(o,k,($("#ac-n")||{}).value.trim(),($("#ac-p")||{}).value.trim()); closeModal(); render(); toast(m<max?`${m} de ${max} cajas recibidas (queda incidencia)`:`${m} cajas recibidas ✓`); },
   docargar(f){ const o=ordOf(f), i=$("#ac-k"), max=+i.dataset.max, k=parseInt(i.value,10)||0, via=($("#ac-via")||{}).value;
     if(k<1||k>max){ toast(`Escribe un número entre 1 y ${max}`,"bad"); return; }
     const v=viaOf(via), oc=viajeOcc(v), n=o.sc.length, pct=Math.max((oc.m3l+k*o.totals.m3/n)/oc.cap.m3,(oc.kgl+k*o.totals.kg/n)/oc.cap.kg);
@@ -14313,9 +14624,9 @@ const ACT = {
   sgclear(){ const c=$("#sg-c"); if(c){ c.getContext("2d").clearRect(0,0,c.width,c.height); sgDirty=false; } },
   sgsave(arg){ const [f,kind]=arg.split("|"), o=ordOf(f), n=($("#sg-n")||{}).value.trim();
     if(!n){ toast("Escribe el nombre","bad"); return; } const img=firmaImg(); if(!img){ toast("Falta la firma: dibújala con el dedo","bad"); return; }
-    if(kind==="entrega") accEntregar(o,{nombre:n,id:($("#sg-i")||{}).value.trim(),notas:($("#sg-o")||{}).value.trim(),firma:img});
+    let res=null; if(kind==="entrega"){ const kk=$("#sg-k"), max=+kk.dataset.max, k=parseInt(kk.value,10)||0; if(k<1||k>max){ toast(`Escribe cuántas cajas recibe (1 a ${max})`,"bad"); return; } res=accEntregar(o,{nombre:n,id:($("#sg-i")||{}).value.trim(),notas:($("#sg-o")||{}).value.trim(),firma:img,cajas:k}); }
     else { o.firmas=o.firmas||{}; o.firmas.remitente={nombre:n,img,at:Date.now()}; logEv("Operación","Firma del remitente",`${o.folio} · ${n}`); saveDB(); }
-    closeModal(); render(); toast(kind==="entrega"?"Entrega guardada con firma":"Firma guardada"); },
+    closeModal(); render(); toast(kind==="entrega"?(res&&res.parcial?`Entrega parcial: ${res.total} de ${o.sc.length} cajas`:"Entrega confirmada con firma"):"Firma guardada"); },
   newpractice(){ const o=crearPractica(); S.mod="practica"; render(); toast(`Pedido de práctica ${o.folio} creado`); },
   delpractice(){ if(!ask("¿Borrar los pedidos de práctica?")) return; const fs=DB.ord.filter(o=>o.practice).map(o=>o.folio);
     DB.ord=DB.ord.filter(o=>!o.practice); DB.via.forEach(v=>{ v.ords=v.ords.filter(x=>!fs.includes(x)); }); DB.fac=DB.fac.filter(f=>!f.ords.every(x=>fs.includes(x))); saveDB(); render(); toast("Prácticas borradas"); },
@@ -14326,6 +14637,39 @@ const ACT = {
   qgo(){ const v=qvalid(); if(v.ok){ ACT.qsend(); return; } toast(v.msg,"bad");
     const order=[["f-sn",Q.sol.nombre.trim()],["f-sc",/^\S+@\S+\.\S+$/.test(Q.sol.correo.trim())],["f-st",Q.sol.tel.replace(/\D/g,"").length>=8],["f-dn",Q.dst.nombre.trim()],["f-dd",Q.dst.dir.trim()],["f-dt",Q.dst.tel.replace(/\D/g,"").length>=8]];
     const bad=order.find(([id,ok])=>!ok); if(bad){ const e=document.getElementById(bad[0]); if(e){ e.scrollIntoView({block:"center",behavior:"smooth"}); e.focus(); } } },
+  /* recolección y seguro (cliente) */
+  qdia(f){ Q.rec.fecha=f; renderRec(); renderSummary(); },
+  recp(arg){ const [d,h]=arg.split("|"); Q.rec.desde=d; Q.rec.hasta=h; renderRec(); renderSummary(); },
+  repeat(f){ repetirPedido(f); },
+  repsel(){ const f=(($("#rep-f")||{}).value||"").trim().toUpperCase()||(($("#rep-s")||{}).value||""); if(!f){ toast("Elige un pedido o escribe un folio","bad"); return; } repetirPedido(f); },
+  /* recolecciones (interno) */
+  calsel(f){ S.recDia=f; render(); },
+  calmes(d){ const r=S.recRef||{y:new Date().getFullYear(),m:new Date().getMonth()}, x=new Date(r.y,r.m+(+d),1); S.recRef={y:x.getFullYear(),m:x.getMonth()}; render(); },
+  calblock(f){ DB.cal.bloq[f]=(($("#rb-m")||{}).value||"").trim()||"Bloqueado"; logEv("Recolecciones","Día bloqueado",`${f} · ${DB.cal.bloq[f]}`); saveDB(); render(); toast("Día bloqueado: ya no recibe solicitudes"); },
+  calopen(f){ delete DB.cal.bloq[f]; logEv("Recolecciones","Día abierto",f); saveDB(); render(); toast("Día abierto"); },
+  recver(f){ const o=ordOf(f); if(!o||!recVigente(o)) return; const d=fromYmd(o.rec.fecha); S.recRef={y:d.getFullYear(),m:d.getMonth()}; S.recDia=o.rec.fecha; S.mod="reco"; S.drawer=null; S.modals=[]; render(); scrollTo(0,0); },
+  recconf(f){ openRecConfirm(f); },
+  recconf2(f){ const o=ordOf(f), r=o.rec; r.estado="programada"; r.unidad=($("#rc-u")||{}).value.trim(); r.nota=($("#rc-n")||{}).value.trim(); r.confirmadaAt=Date.now();
+    o.history.push({k:o.status,at:Date.now(),note:`Recolección confirmada: ${fshort(fromYmd(r.fecha))} ${recVentana(r)}${r.unidad?` · ${r.unidad}`:""}`,by:ROLES[ROLE].t});
+    logEv("Recolecciones","Confirmada",`${o.folio} · ${r.fecha} ${recVentana(r)}`); saveDB(); closeModal(); render(); toast("Recolección confirmada"); },
+  recdone(f){ const o=ordOf(f), r=o.rec; if(stIdx(o)<1){ toast("Primero confirma el pedido para generar la guía","bad"); return; }
+    r.estado="recolectada"; r.hechaAt=Date.now(); bump(o,"recolectado",`Recolectado en ${r.dir}${r.unidad?` · ${r.unidad}`:""}`);
+    logEv("Recolecciones","Recolectada",o.folio); saveDB(); render(); toast("Recolección registrada"); },
+  recfail(f){ const o=ordOf(f), r=o.rec; r.estado="no_realizada"; r.nota="No se pudo recolectar; reprogramar con el cliente";
+    o.history.push({k:o.status,at:Date.now(),note:"Recolección no realizada; se reprogramará",by:ROLES[ROLE].t}); logEv("Recolecciones","No realizada",o.folio); saveDB(); render(); toast("Marcada como no realizada"); },
+  recre(f){ openRecResched(f); },
+  rsdia(f){ S.rs.fecha=f; openRecResched(S.rs.folio,true); },
+  rsp(arg){ const [d,h]=arg.split("|"); S.rs.desde=d; S.rs.hasta=h; openRecResched(S.rs.folio,true); },
+  recre2(f){ const o=ordOf(f), r=o.rec, s=S.rs;
+    if(!s.fecha){ toast("Elige el nuevo día","bad"); return; } if(hh(s.hasta)-hh(s.desde)<CFG.recoleccion.minHoras){ toast(`La ventana debe ser de al menos ${CFG.recoleccion.minHoras} horas`,"bad"); return; }
+    r.fecha=s.fecha; r.desde=s.desde; r.hasta=s.hasta; if(r.estado==="no_realizada") r.estado="solicitada";
+    o.history.push({k:o.status,at:Date.now(),note:`Recolección reprogramada: ${fshort(fromYmd(r.fecha))} ${recVentana(r)}`,by:ROLES[ROLE].t}); logEv("Recolecciones","Reprogramada",`${o.folio} → ${r.fecha}`); saveDB(); closeModal(); S.recDia=r.fecha; render(); toast("Recolección reprogramada"); },
+  /* seguro (interno) */
+  segedit(f){ S.segTmp=null; openSeguroEdit(f); },
+  seguro2(f){ const o=ordOf(f), v=parseFloat((($("#se-v")||{}).value||"").replace(/[^\d.]/g,""))||0;
+    o.seguro = v>0 ? {on:true,valor:v,file:S.segTmp||(o.seguro&&o.seguro.file)||null} : {on:false,valor:0};
+    o.totals=calc(o.dest,o.items,o.seguro); S.segTmp=null; logEv("Pedidos","Seguro actualizado",`${o.folio} · ${v>0?money(o.totals.seguro):"sin seguro"}`); saveDB(); closeModal(); render(); toast(v>0?`Seguro: ${money(o.totals.seguro)}`:"Seguro quitado"); },
+  segdl(f){ const o=ordOf(f), fl=o&&o.seguro&&o.seguro.file; if(!fl) return; download(fl.name, SANDBOX?`(Archivo adjunto: ${fl.name}, ${num(fl.size/1024,0)} KB. La descarga solo funciona abriendo el sistema en su propia página web.)`:dataUrlBlob(fl.data), fl.type); },
   /* cotizador */
   qadd(){ Q.items.push({cajaId:CFG.cajas[0].id,qty:1}); renderPieces(); renderSummary(); },
   pdel(a,el){ const i=+el.closest(".piece").dataset.i; if(Q.items.length>1){ Q.items.splice(i,1); renderPieces(); renderSummary(); } },
@@ -14396,16 +14740,19 @@ const ACT = {
 const INP = {
   qdest(v){ Q.dest=v; renderPieces(); renderSummary(); renderOcurre(); },
   qf(v,el){ setPath(Q, el.dataset.arg, v); renderSummary(); },
+  rec(v,el){ const k=el.dataset.arg; if(k==="dir") Q.rec.dir=v; else if(k==="cn") Q.rec.contacto.nombre=v; else if(k==="ct") Q.rec.contacto.tel=v; else if(k==="pr") Q.rec.pregunta=v; else if(k==="instr") Q.rec.instr=v; renderSummary(); },
+  segv(v,el){ el.value=el.value.replace(/[^\d.]/g,""); Q.seguro.valor=el.value; segRes(); renderSummary(); },
   ptipo(v,el){ const it=Q.items[+el.closest(".piece").dataset.i];
     if(v==="custom") Object.assign(it,{custom:true,cajaId:null,l:"",a:"",h:"",kg:""}); else { it.custom=false; it.cajaId=v; delete it.l; delete it.a; delete it.h; delete it.kg; }
     renderPieces(); renderSummary(); },
   pfield(v,el){ const pc=el.closest(".piece"), it=Q.items[+pc.dataset.i], k=el.dataset.arg;
     if(k==="qty"){ el.value=el.value.replace(/\D/g,"").replace(/^0+/,""); it.qty=parseInt(el.value,10)||0; } else it[k]=Math.max(0,+v||0);
     pc.querySelector(".meta").innerHTML=metaHTML(it); renderSummary(); },
+  ack(v,el){ el.value=el.value.replace(/\D/g,""); const max=+el.dataset.max; if(+el.value>max) el.value=max; ackUpd(); },
   fq(v){ S.fq=v; keepFocus(); },
   fcliq(v){ S.fCliQ=v; keepFocus(); },
   logq(v){ S.logQ=v; keepFocus(); },
-  cfg(v,el){ const nu=el.dataset.num; setPath(CFG, el.dataset.arg, nu?(+v||0):v); saveCfg(); if(el.dataset.arg.startsWith("brand")) applyBrand(); },
+  cfg(v,el){ const nu=el.dataset.num; setPath(CFG, el.dataset.arg, nu?(+v||0):v); saveCfg(); if(el.dataset.arg.startsWith("brand")) applyBrand(); else DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items,o.seguro); }); },
   cfgarr(v,el){ const [arr,i,f]=el.dataset.arg.split("|"); const row=getPath(CFG,arr)[+i];
     let val=v; if(el.dataset.num) val = (v===""&&el.dataset.nullable) ? null : (+v||0);
     setPath(row,f,val); saveCfg(); }
@@ -14414,7 +14761,14 @@ const CH = {
   fEstado(v){ S.fEstado=v; render(); }, fDest(v){ S.fDest=v; render(); },
   svia(v){ S.scan.via=v; refreshScan(); }, sord(v){ S.scan.ord=v; refreshScan(); },
   repdays(v){ S.repDays=v; render(); },
-  qserv(v,el){ Q.serv[el.dataset.arg]=el.checked; },
+  qserv(v,el){ Q.serv[el.dataset.arg]=el.checked; if(el.dataset.arg==="recoleccion") renderRec(); if(el.dataset.arg==="seguro") renderSeg(); renderSummary(); },
+  recd(v){ ajustaVentana(Q.rec,"desde",v); renderRec(); renderSummary(); },
+  rech(v){ ajustaVentana(Q.rec,"hasta",v); renderRec(); renderSummary(); },
+  rsd(v){ ajustaVentana(S.rs,"desde",v); openRecResched(S.rs.folio,true); },
+  rsh(v){ ajustaVentana(S.rs,"hasta",v); openRecResched(S.rs.folio,true); },
+  segfile(v,el){ leerArchivo(el.files[0], f=>{ Q.seguro.file=f; renderSeg(); toast("Factura de la mercancía adjunta"); }); },
+  segfile2(v,el){ leerArchivo(el.files[0], f=>{ S.segTmp=f; toast("Factura adjunta; guarda el seguro para aplicarla"); }); },
+  cfgbool(v,el){ setPath(CFG, el.dataset.arg, el.checked); saveCfg(); DB.ord.forEach(o=>{ o.totals=calc(o.dest,o.items,o.seguro); }); },
   qnotif(v,el){ Q.notif[el.dataset.arg]=el.checked; },
   cfgocurre(v,el){ CFG.destinos[+el.dataset.arg].ocurre=el.checked; saveCfg(); },
   descon(v,el){ CFG.desc.on=el.checked; saveCfg(); },

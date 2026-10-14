@@ -3,7 +3,7 @@ const S = { view:"cotizar", mod:"dash", modals:[], drawer:null, done:null, track
   fEstado:"todos", fDest:"todos", fq:"", fCliQ:"", ftab:"fac", docTab:"rem", cfgTab:"marca", repDays:30, logQ:"", vtab:"activos", cliSel:null,
   scan:{mode:"auto", via:"", ord:"", feed:[], cam:false}, scanResult:null, pendingScan:null };
 let Q = null;
-const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, notif:{wa:false,mail:false}, obs:"" });
+const newQ = () => ({ dest:CFG.destinos[0].id, items:[{cajaId:CFG.cajas[0].id, qty:1}], sol:{nombre:"",empresa:"",correo:"",tel:""}, dst:{nombre:"",dir:"",tel:""}, serv:{recoleccion:true,entrega:false,seguro:false}, notif:{wa:false,mail:false}, rec:{dir:"",fecha:"",desde:"09:00",hasta:"12:00",contacto:{nombre:"",tel:""},pregunta:"",instr:""}, seguro:{valor:"",file:null}, base:null, obs:"" });
 Q = newQ();
 const withDims = it => { if(it.custom) return it; const c=CFG.cajas.find(x=>x.id===it.cajaId)||CFG.cajas[0]; return {...it, cajaId:c.id, l:c.l,a:c.a,h:c.h,kg:c.kg}; };
 
@@ -53,6 +53,7 @@ function viewCotizar(){
   </div></div>
   <div class="wrap pull"><div class="layout">
     <div>
+      ${repeatCardHTML()}
       <div class="card">
         <div class="h2"><span class="stepn">1</span>Ruta</div>
         <div class="row2">
@@ -69,13 +70,15 @@ function viewCotizar(){
       <div class="card">
         <div class="h2"><span class="stepn">3</span>Servicios</div>
         <div class="grid" style="gap:10px">
-          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">ALR la coordina; el costo de maniobras se confirma al aceptar el pedido.</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="recoleccion" ${Q.serv.recoleccion?"checked":""}><span><b>Recolección en mi domicilio</b><br><span class="mut sm">Eliges día y horario (ventana de al menos 3 horas); ALR lo confirma.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="entrega" ${Q.serv.entrega?"checked":""}><span><b>Entrega en domicilio del destinatario</b><br><span class="mut sm">Costo de reparto se confirma por ALR.</span></span></label>
-          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">ALR te contactará con el procedimiento (factura con subtotal).</span></span></label>
+          <label class="chk"><input type="checkbox" data-ch="qserv" data-arg="seguro" ${Q.serv.seguro?"checked":""}><span><b>Asegurar mi mercancía</b><br><span class="mut sm">Cuesta el ${CFG.seguroPct}% del valor declarado. Puedes subir la factura de tu mercancía.</span></span></label>
+          <div id="q-seg"></div>
           <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="wa" ${Q.notif.wa?"checked":""}><span><b>Enviarme mi guía y avances por WhatsApp</b><br><span class="mut sm">Se abre WhatsApp con el mensaje listo para enviar.</span></span></label>
           <label class="chk"><input type="checkbox" data-ch="qnotif" data-arg="mail" ${Q.notif.mail?"checked":""}><span><b>Enviarme mi guía y avances por correo</b><br><span class="mut sm">Se abre tu correo con el mensaje listo.</span></span></label>
         </div>
       </div>
+      <div id="q-rec"></div>
       <div class="card">
         <div class="h2"><span class="stepn">4</span>Quién envía</div>
         <div class="row2">
@@ -132,12 +135,14 @@ function qvalid(){
   if(!Q.dst.dir.trim()) m.push("dirección de entrega");
   if(Q.dst.tel.replace(/\D/g,"").length<8) m.push("teléfono del destinatario");
   if(Q.items.some(i=>!(i.qty>=1))) m.push("cantidad de cajas");
+  if(Q.serv.seguro && !(parseFloat(Q.seguro.valor)>0)) m.push("valor declarado del seguro");
+  if(Q.serv.recoleccion) recValida(Q.rec).forEach(x=>m.push("recolección: "+x));
   if(Q.items.some(i=>i.custom&&!(i.l>0&&i.a>0&&i.h>0&&i.kg>0))) m.push("medidas de la pieza especial");
   return {ok:!m.length, msg:m.length?"Falta: "+m.join(", "):""};
 }
 function renderSummary(){
   const items = Q.items.map(withDims).filter(it=>it.l>0&&it.a>0&&it.h>0&&it.kg>0&&it.qty>0);
-  const c = calc(Q.dest, items), d = dest(Q.dest), v = qvalid();
+  const c = calc(Q.dest, items, {on:Q.serv.seguro, valor:parseFloat(Q.seguro.valor)||0}), d = dest(Q.dest), v = qvalid();
   $("#q-sum").innerHTML = `
     <div class="h2" style="margin-bottom:10px">Resumen</div>
     <div class="mut sm" style="margin-bottom:12px">${esc(CFG.origen)} → <b>${esc(d.name)}</b> · ${esc(d.transit)}</div>
@@ -150,6 +155,7 @@ function renderSummary(){
       <dt>Flete</dt><dd class="mono">${money(c.sub)}</dd>
       ${c.discPct?`<dt>Descuento por volumen ${c.discPct}%</dt><dd class="mono">−${money(c.disc)}</dd>`:""}
       ${c.minApplied?`<dt>Mínimo por embarque</dt><dd class="mono">${money(CFG.minimo)}</dd>`:""}
+      ${c.seguro>0?`<dt>Seguro ${CFG.seguroPct}% (valor ${money(c.seguroValor)})</dt><dd class="mono">${money(c.seguro)}</dd>`:""}
       <dt>IVA ${CFG.iva}%</dt><dd class="mono">${money(c.iva)}</dd>
     </dl>
     <div class="tot"><span>Total</span><b class="mono">${money(c.total)}</b></div>
@@ -178,6 +184,7 @@ function viewDone(){
         <div class="mut sm">Total ${money(o.totals.total)} · ${esc(CFG.origen)} → ${esc(dest(o.dest).name)} · ${o.totals.piezas} cajas</div>
       </div>
       ${etaBox(o.dest,o.createdAt)}
+      ${recVigente(o)?`<div style="margin-top:12px">${recResumen(o)}</div>`:""}
       <div style="text-align:left;margin-top:18px"><div class="tag" style="margin-bottom:8px">Qué sigue</div>
         <div class="pstep now"><span class="pn">1</span><div style="flex:1"><b>Descarga tu pre-guía</b><div class="sm mut">Es la hoja con el detalle y el precio. Llévala o mándala a tu almacén.</div></div><button class="btn sm" data-act="doc" data-arg="guia|${esc(o.folio)}">Ver / guardar PDF</button></div>
         <div class="pstep"><span class="pn">2</span><div style="flex:1"><b>Descarga y pega las etiquetas QR</b><div class="sm mut">Una por caja, con las medidas máximas declaradas.</div></div><button class="btn sm" data-act="labels" data-arg="${esc(o.folio)}">Ver etiquetas</button></div>
@@ -187,6 +194,7 @@ function viewDone(){
         <a class="btn ${o.notif&&o.notif.wa?"":"sec"}" href="${esc(wa)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
         <a class="btn ${o.notif&&o.notif.mail?"":"sec"}" href="${esc(ml)}" target="_blank" rel="noopener">Enviar por correo</a>
         <button class="btn sec" data-act="track" data-arg="${esc(o.folio)}">Ver seguimiento</button>
+        <button class="btn sec" data-act="repeat" data-arg="${esc(o.folio)}">Repetir este pedido</button>
         <button class="btn sec" data-act="newquote">Nueva cotización</button>
       </div>
       <p class="mut sm" style="margin-top:16px">Guarda tu folio: con él consultas el estado de tu envío cuando quieras.</p>
@@ -233,9 +241,12 @@ function viewRastreo(){
       </div>
       <div class="mut sm" style="margin-bottom:6px">${esc(CFG.origen)} → <b>${esc(dest(o.dest).name)}</b> · ${o.totals.piezas} cajas · ${num(o.totals.m3,3)} m³ · Destinatario: ${esc(o.dst.nombre)}</div>
       ${o.status==="entregado"?`<div class="note ok" style="margin:12px 0"><b>Entregado</b>${o.pod?` a ${esc(o.pod.nombre)} · ${fdate(o.pod.at)}`:""}</div>`:(o.cancelado?"":etaBox(o.dest,o.createdAt))}
-      <div style="margin:16px 0"><div class="tag" style="margin-bottom:6px">Tus cajas</div>${boxProgress(o,true)}</div>
+      ${recVigente(o)?`<div style="margin:12px 0">${recResumen(o)}</div>`:""}
+      <div style="margin:16px 0"><div class="tag" style="margin-bottom:6px">Tus cajas</div>${boxProgress(o,true)}
+        ${o.conf&&o.conf.recepcion?`<div class="note ${o.conf.recepcion.cajas===o.conf.recepcion.de?"ok":""} sm" style="margin-top:8px"><b>Almacén confirmó</b> ${o.conf.recepcion.cajas} de ${o.conf.recepcion.de} cajas · ${fdate(o.conf.recepcion.at)}</div>`:""}
+        ${o.pod&&o.pod.cajas!=null?`<div class="note ok sm" style="margin-top:8px"><b>Entrega confirmada:</b> ${o.pod.cajas} de ${o.pod.de} cajas · recibió ${esc(o.pod.nombre)}</div>`:((o.entregas||[]).length?`<div class="note sm" style="margin-top:8px"><b>Entrega parcial:</b> ${o.entregas.reduce((s,e)=>s+e.cajas,0)} de ${o.sc.length} cajas entregadas</div>`:"")}</div>
       ${timelineHTML(o)}
-      <div class="chips" style="margin-top:6px"><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}">Imprimir etiquetas QR</button></div>
+      <div class="chips" style="margin-top:6px"><button class="btn sec sm" data-act="labels" data-arg="${esc(o.folio)}">Imprimir etiquetas QR</button><button class="btn sec sm" data-act="repeat" data-arg="${esc(o.folio)}">Repetir pedido</button></div>
     </div>`:""}
   </div>`;
 }
